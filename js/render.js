@@ -24,9 +24,17 @@ export function render(ctx) {
     }
     
     ctx.fillStyle = CONFIG.colors.node;
+    ctx.font = '12px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
     for (const node of graph.nodes) {
         ctx.beginPath();
         ctx.arc(node.x, node.y, CONFIG.nodeRadius, 0, Math.PI * 2);
         ctx.fill();
+        
+        ctx.fillStyle = CONFIG.colors.text;
+        ctx.fillText(node.id, node.x, node.y + CONFIG.nodeRadius + 8);
+        ctx.fillStyle = CONFIG.colors.node;
     }
 }
