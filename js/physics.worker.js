@@ -107,9 +107,18 @@ function buildQuadtree() {
   for (const n of nodes) {
     const s = sim[n.id];
     if (!s) continue;
-    root.insert({ id: n.id, x: s.x, y: s.y, mass: n.mass });
+    root.insert({ id: n.id, x: s.x, y: s.y, mass: s.mass });
   }
   return root;
+}
+
+function computeDegrees() {
+  const deg = new Map();
+  for (const edge of edges) {
+    deg.set(edge[0], (deg.get(edge[0]) || 0) + 1);
+    deg.set(edge[1], (deg.get(edge[1]) || 0) + 1);
+  }
+  return deg;
 }
 
 function segmentsCross(p1, p2, p3, p4) {
@@ -129,7 +138,17 @@ function step() {
   const forces = new Map();
   for (const n of nodes) forces.set(n.id, { x: 0, y: 0 });
 
+  const degrees = computeDegrees();
+  for (const n of nodes) {
+    const s = sim[n.id];
+    if (!s) continue;
+    s.mass = 1 + (degrees.get(n.id) || 0) * 0.4;
+  }
+
   const root = buildQuadtree();
+
+  const gravityScale = Math.min(1, 25 / Math.max(25, nodes.length));
+  const effectiveGravity = PHYSICS.CENTER_GRAVITY * gravityScale;
 
   for (const n of nodes) {
     const s = sim[n.id];
@@ -139,15 +158,19 @@ function step() {
     const f = forces.get(n.id);
     f.x += fx[0];
     f.y += fy[0];
-    f.x += (W / 2 - s.x) * PHYSICS.CENTER_GRAVITY;
-    f.y += (H / 2 - s.y) * PHYSICS.CENTER_GRAVITY;
+    f.x += (W / 2 - s.x) * effectiveGravity;
+    f.y += (H / 2 - s.y) * effectiveGravity;
   }
 
   for (const edge of edges) {
     const a = edge[0], b = edge[1];
-    const restLen = edge.length > 2 ? edge[2] : PHYSICS.EDGE_REST;
     const sa = sim[a], sb = sim[b];
     if (!sa || !sb) continue;
+    const degA = degrees.get(a) || 0;
+    const degB = degrees.get(b) || 0;
+    const maxDeg = Math.max(degA, degB);
+    const baseRest = edge.length > 2 ? edge[2] : PHYSICS.EDGE_REST;
+    const restLen = baseRest + Math.min(maxDeg, 40) * 3;
     const dx = sb.x - sa.x, dy = sb.y - sa.y;
     const d  = Math.sqrt(dx * dx + dy * dy) || 1;
     const f  = PHYSICS.EDGE_SPRING_K * (d - restLen);
