@@ -57,8 +57,8 @@ export class InfoPanel {
     if (isRepo) {
       this.sub.textContent = `Repository · ${node.language || 'Unknown'}`;
       this.desc.textContent = node.description || 'No description provided.';
-      this.mutual.textContent = '—';
-      this.oneway.textContent = '—';
+      this.mutual.textContent = '-';
+      this.oneway.textContent = '-';
       this.total.textContent = `★ ${node.stars || 0}`;
     } else {
       this.sub.textContent = `@${node.login}`;

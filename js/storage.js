@@ -1,7 +1,5 @@
 /**
- * storage.js — localStorage persistence for the known graph.
- * Only metadata is persisted (login, avatar URL, bio, counts).
- * Avatars themselves are reloaded from GitHub on demand.
+ * storage.js: localStorage persistence for the known graph.
  */
 
 import { CONFIG } from './config.js';
@@ -9,7 +7,6 @@ import { CONFIG } from './config.js';
 const KEY = CONFIG.STORAGE_KEY;
 
 export const Storage = {
-  /** Save a Graph instance. */
   save(graph) {
     try {
       const json = graph.toJSON();
@@ -29,7 +26,6 @@ export const Storage = {
     }
   },
 
-  /** Load a Graph instance from localStorage. Returns a fresh Graph. */
   load(GraphClass) {
     try {
       const raw = localStorage.getItem(KEY);
@@ -44,7 +40,6 @@ export const Storage = {
     }
   },
 
-  /** Wipe persisted state. */
   clear() {
     try { localStorage.removeItem(KEY); } catch {}
   },
