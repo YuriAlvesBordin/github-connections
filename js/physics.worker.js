@@ -1,35 +1,3 @@
-/**
- * physics.worker.js — force-directed simulation running off the main thread.
- *
- * Forces applied per frame:
- *   • Barnes-Hut n-body repulsion (O(n log n))
- *   • Hooke spring on every edge pair
- *   • Soft collision spring (prevents node overlap)
- *   • Center gravity (weak pull toward viewport center)
- *   • Edge-crossing repulsion (untangles edges when graph is small)
- *
- * Cooling schedule: temperature multiplies velocity each frame and decays
- * over time. When the max node velocity stays below SLEEP_V for
- * SLEEP_FRAMES consecutive frames, the simulation goes to sleep until
- * something wakes it (add/remove/drag/reheat).
- *
- * Communication protocol:
- *   main -> worker : { type, data }
- *   worker -> main : { type, ... }
- *
- * Message types:
- *   init          { W, H, nodes:[{id,mass}], edges:[[a,b]] }
- *   addNodes      { nodes:[{id,mass}], edges:[[a,b]] }
- *   removeNode    { id }
- *   pinNode       { id, x, y }       // user is dragging
- *   unpinNode     { id }
- *   reheat        { temperature? }
- *   resize        { W, H }
- *   step                            // request one tick + positions
- *   getState                        // request a snapshot
- *   clear
- */
-
 const PHYSICS = {
   NODE_REPULSION:   18000,
   EDGE_SPRING_K:    0.022,
@@ -48,18 +16,14 @@ const PHYSICS = {
   SLEEP_FRAMES:     60,
 };
 
-// ---- State ----
-let nodes = [];     // [{ id, mass }]
-let edges = [];     // [[a, b, restLen?]]
-let sim   = {};     // id -> { x, y, vx, vy, mass, pinned }
+let nodes = [];
+let edges = [];
+let sim   = {};
 let W = 0, H = 0;
 let temperature = PHYSICS.INITIAL_TEMP;
 let sleeping = false;
 let sleepFrames = 0;
 
-// ============================================================
-// Quadtree for Barnes-Hut repulsion
-// ============================================================
 class Quad {
   constructor(x, y, w, h) {
     this.x = x; this.y = y; this.w = w; this.h = h;
@@ -108,7 +72,6 @@ class Quad {
     this.mass = total;
   }
 
-  /** Apply repulsive force from this quad onto `body`, accumulating into fx/fy. */
   applyForce(body, fx, fy) {
     if (this.body && this.body.id === body.id) return;
     const dx = this.cx - body.x;
@@ -149,9 +112,6 @@ function buildQuadtree() {
   return root;
 }
 
-// ============================================================
-// Edge-crossing detection
-// ============================================================
 function segmentsCross(p1, p2, p3, p4) {
   const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
   const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
@@ -163,9 +123,6 @@ function segmentsCross(p1, p2, p3, p4) {
   return t > 0.05 && t < 0.95 && u > 0.05 && u < 0.95;
 }
 
-// ============================================================
-// Main step
-// ============================================================
 function step() {
   if (sleeping) return;
 
@@ -174,7 +131,6 @@ function step() {
 
   const root = buildQuadtree();
 
-  // N-body repulsion + center gravity
   for (const n of nodes) {
     const s = sim[n.id];
     if (!s) continue;
@@ -187,7 +143,6 @@ function step() {
     f.y += (H / 2 - s.y) * PHYSICS.CENTER_GRAVITY;
   }
 
-  // Edge springs (edges may be [a, b] or [a, b, restLength])
   for (const edge of edges) {
     const a = edge[0], b = edge[1];
     const restLen = edge.length > 2 ? edge[2] : PHYSICS.EDGE_REST;
@@ -202,8 +157,6 @@ function step() {
     forces.get(b).x -= fxx;
     forces.get(b).y -= fyy;
 
-    // Soft collision: if nodes are closer than their combined radii,
-    // push them apart. We approximate radii using mass.
     const minDist = 30 + (sa.mass + sb.mass) * 2;
     if (d < minDist) {
       const overlap = minDist - d;
@@ -216,7 +169,6 @@ function step() {
     }
   }
 
-  // Edge-crossing repulsion (only worth it for small graphs)
   if (edges.length < 600) {
     for (let i = 0; i < edges.length; i++) {
       for (let j = i + 1; j < edges.length; j++) {
@@ -244,7 +196,6 @@ function step() {
     }
   }
 
-  // Integrate
   let maxV = 0;
   for (const n of nodes) {
     const s = sim[n.id];
@@ -266,7 +217,6 @@ function step() {
     if (v > maxV) maxV = v;
   }
 
-  // Cooling + sleep detection
   temperature *= PHYSICS.COOLING;
   if (temperature < PHYSICS.MIN_TEMP) temperature = PHYSICS.MIN_TEMP;
 
@@ -278,9 +228,6 @@ function step() {
   }
 }
 
-// ============================================================
-// Helpers
-// ============================================================
 function nodeMass(n) {
   return n.mass || 1;
 }
@@ -301,9 +248,6 @@ function wake(t = 0.2) {
   temperature = Math.max(temperature, t);
 }
 
-// ============================================================
-// Message handler
-// ============================================================
 self.onmessage = (e) => {
   const { type, data } = e.data;
 
