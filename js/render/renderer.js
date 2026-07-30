@@ -144,7 +144,14 @@ export class Renderer {
     }
   }
 
-  setFilter(mode) { this.filterMode = mode; }
+  setFilter(mode) {
+    this.filterMode = mode;
+    this._computeVisibleNodes();
+    if (this.sim) {
+      const ids = Array.from(this._visibleNodes);
+      this.sim.setActiveNodes(ids);
+    }
+  }
   setShowArrows(v) { this.showArrows = v; }
   setShowLabels(v) { this.showLabels = v; }
   setSelected(node) { this.selected = node; }
@@ -460,13 +467,6 @@ export class Renderer {
       const r = this._radius(node);
       const label = node.type === 'repo' ? node.name : node.login;
       const y = p.y + r + 6 / scale;
-
-      const metrics = ctx.measureText(label);
-      const padX = 4 / scale, padY = 2 / scale;
-      const w = metrics.width + padX * 2;
-      const h = 14 / scale;
-      ctx.fillStyle = this._labelBgColor;
-      ctx.fillRect(p.x - w / 2, y - padY, w, h);
 
       ctx.fillStyle = (isSel || isHov) ? this._labelHiColor : this._labelColor;
       const fontSpec = node.type === 'repo' ? '10px' : '11px';

@@ -108,6 +108,11 @@ export class SimulationClient {
     this.sleeping = false;
   }
 
+  setActiveNodes(ids) {
+    this._post({ type: 'setActiveNodes', data: { ids } });
+    this.sleeping = false;
+  }
+
   resize(W, H) {
     this._post({ type: 'resize', data: { W, H } });
   }

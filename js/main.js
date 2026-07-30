@@ -75,8 +75,10 @@ let booted = false;
 
 function applyFilters(state) {
   renderer.setFilter(state.mode);
-  renderer.setShowArrows(state.showArrows);
-  renderer.setShowLabels(state.showLabels);
+}
+
+function refreshFilter() {
+  renderer.setFilter(filterPanel.getState().mode);
 }
 
 function selectNode(node) {
@@ -107,6 +109,7 @@ function regenerateLayout() {
   const now = Date.now();
   allNodes.forEach((n, i) => { n.addedAt = now + i * 100; });
   sim.init(renderer.W, renderer.H, allNodes, allEdges);
+  refreshFilter();
   sim.reheat(1.0);
   toast.show('regenerating layout');
 }
@@ -115,11 +118,15 @@ async function loadUser(login) {
   toast.show(`loading @${login}…`);
   try {
     const user = await GitHub.fetchUser(login);
-    clearGraph();
-    const id = graph.addUser(user, Date.now());
-    sim.init(renderer.W, renderer.H, Array.from(graph.nodes.values()), []);
-    Storage.save(graph);
+    const existing = graph.idOf(user.login);
+    const now = Date.now();
+    const id = graph.addUser(user, now);
+    if (existing === undefined) {
+      sim.add([graph.nodeOf(id)], []);
+    }
+    refreshFilter();
     selectNode(graph.nodeOf(id));
+    Storage.save(graph);
     toast.ok(`loaded @${login}`);
     setTimeout(fitToView, 200);
   } catch (e) {
@@ -150,6 +157,7 @@ async function onExpand(node) {
       if (graph.addDirectedEdge(node.id, tid)) newSimEdges.push([node.id, tid]);
     }
     sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
+    refreshFilter();
     sim.reheat(0.4);
     infoModal.refresh();
     Storage.save(graph);
@@ -159,10 +167,29 @@ async function onExpand(node) {
   }
 }
 
+function removeReposForUser(userId) {
+  const repos = graph.repoEdges.get(userId);
+  if (!repos || repos.size === 0) return;
+  for (const rid of Array.from(repos)) {
+    graph.removeNode(rid);
+    sim.remove(rid);
+    renderer.renderPos.delete(rid);
+  }
+  refreshFilter();
+  Storage.save(graph);
+}
+
 async function showRepos(node) {
   if (!node || node.type !== 'user') return;
   const existing = graph.repoEdges.get(node.id);
-  if (existing && existing.size > 0) { toast.show('repos already shown'); return; }
+  if (existing && existing.size > 0) {
+    removeReposForUser(node.id);
+    toast.show('repos removed');
+    return;
+  }
+  for (const [uid] of graph.repoEdges) {
+    if (uid !== node.id) removeReposForUser(uid);
+  }
   toast.show(`fetching @${node.login} top repos…`);
   try {
     const repos = await GitHub.fetchTopRepos(node.login, 3);
@@ -174,6 +201,7 @@ async function showRepos(node) {
       if (rid != null) { newNodeIds.push(rid); newSimEdges.push([node.id, rid, 80]); }
     });
     sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
+    refreshFilter();
     sim.reheat(0.3);
     infoModal.refresh();
     Storage.save(graph);
@@ -189,6 +217,7 @@ function removeNode(node) {
   sim.remove(node.id);
   renderer.renderPos.delete(node.id);
   if (selected === node) selectNode(null);
+  refreshFilter();
   Storage.save(graph);
   toast.show(node.type === 'repo' ? `removed ${node.name}` : `removed @${node.login}`);
 }
@@ -201,7 +230,7 @@ function clearGraph() {
   toast.show('graph cleared');
 }
 
-function boot() {
+async function boot() {
   if (booted) return;
   booted = true;
   const data = Storage.load();
@@ -211,12 +240,21 @@ function boot() {
     for (const [a, b] of graph.pairs()) allEdges.push([a, b]);
     for (const [uid, rid] of graph.repoPairs()) allEdges.push([uid, rid, 80]);
     sim.init(renderer.W, renderer.H, Array.from(graph.nodes.values()), allEdges);
+    refreshFilter();
     toast.show(`restored ${graph.nodes.size} nodes`);
-    setTimeout(fitToView, 400);
+    setTimeout(() => { fitToView(); }, 500);
   } else {
     sim.init(renderer.W, renderer.H, [], []);
     topbar.setValue(BOOT_USER);
-    loadUser(BOOT_USER);
+    await loadUser(BOOT_USER);
+    const rootId = graph.idOf(BOOT_USER);
+    if (rootId !== undefined) {
+      const root = graph.nodeOf(rootId);
+      if (root && !root.expanded) {
+        await onExpand(root);
+      }
+    }
+    setTimeout(() => { fitToView(); }, 500);
   }
 }
 

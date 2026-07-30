@@ -23,6 +23,7 @@ let W = 0, H = 0;
 let temperature = PHYSICS.INITIAL_TEMP;
 let sleeping = false;
 let sleepFrames = 0;
+let activeIds = null;
 
 class Quad {
   constructor(x, y, w, h) {
@@ -33,11 +34,12 @@ class Quad {
     this.body = null;
   }
 
-  insert(body) {
+  insert(body, depth = 0) {
+    if (depth > 20) return;
     if (this.body && !this.children) {
       if (this.body.id === body.id) return;
       this._subdivide();
-      this._insertIntoChild(this.body);
+      this._insertIntoChild(this.body, depth + 1);
       this.body = null;
     }
     if (!this.children) {
@@ -45,7 +47,7 @@ class Quad {
       this._updateMass(body);
       return;
     }
-    this._insertIntoChild(body);
+    this._insertIntoChild(body, depth + 1);
     this._updateMass(body);
   }
 
@@ -59,10 +61,10 @@ class Quad {
     ];
   }
 
-  _insertIntoChild(body) {
+  _insertIntoChild(body, depth) {
     const idx = (body.x >= this.x + this.w / 2 ? 1 : 0)
               + (body.y >= this.y + this.h / 2 ? 2 : 0);
-    this.children[idx].insert(body);
+    this.children[idx].insert(body, depth);
   }
 
   _updateMass(body) {
@@ -101,13 +103,20 @@ class Quad {
   }
 }
 
+function isActive(id) {
+  return !activeIds || activeIds.has(id);
+}
+
 function buildQuadtree() {
   const margin = Math.max(W, H);
   const root = new Quad(-margin, -margin, 2 * margin, 2 * margin);
   for (const n of nodes) {
+    if (!isActive(n.id)) continue;
     const s = sim[n.id];
     if (!s) continue;
-    root.insert({ id: n.id, x: s.x, y: s.y, mass: s.mass });
+    const clampedX = Math.max(-margin, Math.min(margin, s.x));
+    const clampedY = Math.max(-margin, Math.min(margin, s.y));
+    root.insert({ id: n.id, x: clampedX, y: clampedY, mass: s.mass });
   }
   return root;
 }
@@ -136,10 +145,11 @@ function step() {
   if (sleeping) return;
 
   const forces = new Map();
-  for (const n of nodes) forces.set(n.id, { x: 0, y: 0 });
+  const activeNodes = nodes.filter((n) => isActive(n.id));
+  for (const n of activeNodes) forces.set(n.id, { x: 0, y: 0 });
 
   const degrees = computeDegrees();
-  for (const n of nodes) {
+  for (const n of activeNodes) {
     const s = sim[n.id];
     if (!s) continue;
     s.mass = 1 + (degrees.get(n.id) || 0) * 0.4;
@@ -147,10 +157,10 @@ function step() {
 
   const root = buildQuadtree();
 
-  const gravityScale = Math.min(1, 25 / Math.max(25, nodes.length));
+  const gravityScale = Math.min(1, 25 / Math.max(25, activeNodes.length));
   const effectiveGravity = PHYSICS.CENTER_GRAVITY * gravityScale;
 
-  for (const n of nodes) {
+  for (const n of activeNodes) {
     const s = sim[n.id];
     if (!s) continue;
     const fx = [0], fy = [0];
@@ -164,6 +174,7 @@ function step() {
 
   for (const edge of edges) {
     const a = edge[0], b = edge[1];
+    if (!isActive(a) || !isActive(b)) continue;
     const sa = sim[a], sb = sim[b];
     if (!sa || !sb) continue;
     const degA = degrees.get(a) || 0;
@@ -194,9 +205,11 @@ function step() {
 
   if (edges.length < 600) {
     for (let i = 0; i < edges.length; i++) {
+      const a1 = edges[i][0], b1 = edges[i][1];
+      if (!isActive(a1) || !isActive(b1)) continue;
       for (let j = i + 1; j < edges.length; j++) {
-        const [a1, b1] = edges[i];
-        const [a2, b2] = edges[j];
+        const a2 = edges[j][0], b2 = edges[j][1];
+        if (!isActive(a2) || !isActive(b2)) continue;
         if (a1 === a2 || a1 === b2 || b1 === a2 || b1 === b2) continue;
         const s1 = sim[a1], t1 = sim[b1], s2 = sim[a2], t2 = sim[b2];
         if (!s1 || !t1 || !s2 || !t2) continue;
@@ -220,10 +233,13 @@ function step() {
   }
 
   let maxV = 0;
-  for (const n of nodes) {
+  const maxR = Math.max(W, H) * 3;
+  const cx = W / 2, cy = H / 2;
+  for (const n of activeNodes) {
     const s = sim[n.id];
     if (!s || s.pinned) continue;
     const f = forces.get(n.id);
+    if (!f) continue;
     s.vx += f.x * 0.5;
     s.vy += f.y * 0.5;
     s.vx *= PHYSICS.DAMPING;
@@ -237,6 +253,15 @@ function step() {
     }
     s.x += s.vx;
     s.y += s.vy;
+    const ddx = s.x - cx, ddy = s.y - cy;
+    const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+    if (dist > maxR) {
+      const k = maxR / dist;
+      s.x = cx + ddx * k;
+      s.y = cy + ddy * k;
+      s.vx *= 0.3;
+      s.vy *= 0.3;
+    }
     if (v > maxV) maxV = v;
   }
 
@@ -367,10 +392,18 @@ self.onmessage = (e) => {
       break;
     }
 
+    case 'setActiveNodes': {
+      activeIds = data.ids ? new Set(data.ids) : null;
+      sleeping = false;
+      sleepFrames = 0;
+      break;
+    }
+
     case 'step': {
       step();
       const positions = {};
       for (const n of nodes) {
+        if (!isActive(n.id)) continue;
         const s = sim[n.id];
         if (s) positions[n.id] = { x: s.x, y: s.y };
       }

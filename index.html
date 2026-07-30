@@ -30,7 +30,7 @@
       </button>
     </div>
     <div class="topbar-group">
-      <button id="btn-filter" class="btn btn-icon" type="button" title="connection filters" aria-label="connection filters">
+      <button id="btn-filter" class="btn btn-icon" type="button" title="connection filter" aria-label="connection filter">
         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 5h14M5 10h10M7 15h6"/>
         </svg>
@@ -48,28 +48,6 @@
       </button>
     </div>
   </header>
-
-  <aside id="filter-panel" class="filter-panel" aria-label="Connection filters">
-    <div class="filter-title">connections</div>
-    <div class="filter-row">
-      <button class="filter-chip active" data-filter="all">all</button>
-      <button class="filter-chip" data-filter="mutual">mutual</button>
-      <button class="filter-chip" data-filter="oneway">one-way</button>
-    </div>
-    <label class="filter-toggle">
-      <input type="checkbox" id="filter-arrows" checked />
-      <span>show arrows on one-way edges</span>
-    </label>
-    <label class="filter-toggle">
-      <input type="checkbox" id="filter-labels" checked />
-      <span>show labels</span>
-    </label>
-    <div class="filter-legend">
-      <div class="legend-item"><span class="legend-dot legend-mutual"></span>mutual follow</div>
-      <div class="legend-item"><span class="legend-dot legend-oneway"></span>one-way follow</div>
-      <div class="legend-item"><span class="legend-dot legend-repo"></span>top repos</div>
-    </div>
-  </aside>
 
   <div id="ctx-menu" class="ctx-menu" role="menu">
     <div class="ctx-item" id="ctx-info" role="menuitem">show info</div>

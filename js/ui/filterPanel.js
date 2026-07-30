@@ -1,57 +1,27 @@
 export class FilterPanel {
   constructor({ onChange }) {
     this.onChange = onChange;
+    this.btn = document.getElementById('btn-filter');
+    this.modes = ['all', 'mutual'];
+    this.labels = { all: 'all', mutual: 'mutual' };
+    this.idx = 0;
 
-    this.root = document.getElementById('filter-panel');
-    this.btnToggle = document.getElementById('btn-filter');
-    this.chips = {
-      all: this.root.querySelector('[data-filter="all"]'),
-      mutual: this.root.querySelector('[data-filter="mutual"]'),
-      oneway: this.root.querySelector('[data-filter="oneway"]'),
-    };
-    this.chkArrows = document.getElementById('filter-arrows');
-    this.chkLabels = document.getElementById('filter-labels');
+    this.btn.addEventListener('click', () => {
+      this.idx = (this.idx + 1) % this.modes.length;
+      this._update();
+      this.onChange({ mode: this.modes[this.idx] });
+    });
 
-    this._bind();
-    this._state = { mode: 'all', showArrows: true, showLabels: true };
+    this._update();
   }
 
-  _bind() {
-    this.btnToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.root.classList.toggle('visible');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!this.root.contains(e.target) && !this.btnToggle.contains(e.target)) {
-        this.root.classList.remove('visible');
-      }
-    });
-
-    for (const [mode, btn] of Object.entries(this.chips)) {
-      btn.addEventListener('click', () => {
-        this._state.mode = mode;
-        this._updateChips();
-        this.onChange(this._state);
-      });
-    }
-    this.chkArrows.addEventListener('change', () => {
-      this._state.showArrows = this.chkArrows.checked;
-      this.onChange(this._state);
-    });
-    this.chkLabels.addEventListener('change', () => {
-      this._state.showLabels = this.chkLabels.checked;
-      this.onChange(this._state);
-    });
-  }
-
-  _updateChips() {
-    for (const [mode, btn] of Object.entries(this.chips)) {
-      btn.classList.toggle('active', mode === this._state.mode);
-    }
+  _update() {
+    const mode = this.modes[this.idx];
+    this.btn.title = `filter: ${mode}`;
+    this.btn.classList.toggle('btn-primary', mode !== 'all');
   }
 
   getState() {
-    return { ...this._state };
+    return { mode: this.modes[this.idx] };
   }
 }
