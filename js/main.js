@@ -1,7 +1,3 @@
-/**
- * main.js — application entry point.
- */
-
 import { CONFIG } from './config.js';
 import { graph } from './graph.js';
 import { Storage } from './storage.js';
