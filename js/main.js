@@ -7,7 +7,7 @@ import { Camera } from './render/camera.js';
 import { Renderer } from './render/renderer.js';
 import { avatarCache } from './render/avatarCache.js';
 import { Topbar } from './ui/topbar.js';
-import { InfoPanel } from './ui/infoPanel.js';
+import { InfoModal } from './ui/infoPanel.js';
 import { ContextMenu } from './ui/contextMenu.js';
 import { FilterPanel } from './ui/filterPanel.js';
 import { toast } from './ui/toast.js';
@@ -21,8 +21,9 @@ const canvas = document.getElementById('canvas');
 const camera = new Camera();
 const sim = new SimulationClient();
 const renderer = new Renderer(canvas, graph, sim, camera);
-const infoPanel = new InfoPanel({ graph, onExpand, onShowRepos: showRepos });
+const infoModal = new InfoModal({ graph, onExpand, onShowRepos: showRepos });
 const contextMenu = new ContextMenu({
+  onInfo: (node) => infoModal.show(node),
   onExpand,
   onFocus: (node) => focusNode(node),
   onOpenGithub: (node) => window.open(node.html_url, '_blank', 'noopener'),
@@ -33,7 +34,7 @@ const topbar = new Topbar({
   onLoad: loadUser,
   onClear: clearGraph,
   onFit: fitToView,
-  onReheat: () => { sim.reheat(); toast.show('simulation reheated'); },
+  onReheat: () => regenerateLayout(),
 });
 
 const input = new InputController({
@@ -41,10 +42,7 @@ const input = new InputController({
   camera,
   renderer,
   callbacks: {
-    onHover: (node) => {
-      renderer.setHovered(node);
-      updateInfoPanel();
-    },
+    onHover: (node) => { renderer.setHovered(node); },
     onDragNode: (node, x, y) => {
       sim.pin(node.id, x, y);
       const rp = renderer.renderPos.get(node.id);
@@ -66,7 +64,7 @@ const input = new InputController({
     onRightClick: (node, x, y) => { selectNode(node); contextMenu.show(node, x, y); },
     onEscape: () => { selectNode(null); contextMenu.hide(); },
     onFit: fitToView,
-    onReheat: () => { sim.reheat(); },
+    onReheat: () => { regenerateLayout(); },
     onDeleteSelected: () => { if (selected) removeNode(selected); },
     onExpandSelected: () => { if (selected && selected.type === 'user') onExpand(selected); },
   },
@@ -84,12 +82,7 @@ function applyFilters(state) {
 function selectNode(node) {
   selected = node;
   renderer.setSelected(node);
-  updateInfoPanel();
   contextMenu.hide();
-}
-
-function updateInfoPanel() {
-  infoPanel.setNode(renderer.hovered || selected);
 }
 
 function focusNode(node) {
@@ -102,6 +95,20 @@ function fitToView() {
   const bbox = renderer.bbox();
   if (bbox) camera.fitTo(bbox, renderer.W, renderer.H);
   else toast.show('nothing to fit');
+}
+
+function regenerateLayout() {
+  const allNodes = Array.from(graph.nodes.values());
+  if (allNodes.length === 0) { toast.show('nothing to regenerate'); return; }
+  const allEdges = [];
+  for (const [a, b] of graph.pairs()) allEdges.push([a, b]);
+  for (const [uid, rid] of graph.repoPairs()) allEdges.push([uid, rid, 80]);
+  sim.clear();
+  const now = Date.now();
+  allNodes.forEach((n, i) => { n.addedAt = now + i * 100; });
+  sim.init(renderer.W, renderer.H, allNodes, allEdges);
+  sim.reheat(1.0);
+  toast.show('regenerating layout');
 }
 
 async function loadUser(login) {
@@ -144,7 +151,7 @@ async function onExpand(node) {
     }
     sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
     sim.reheat(0.4);
-    infoPanel.refresh();
+    infoModal.refresh();
     Storage.save(graph);
     toast.ok(`+${followers.length + following.length} connections`);
   } catch (e) {
@@ -168,7 +175,7 @@ async function showRepos(node) {
     });
     sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
     sim.reheat(0.3);
-    infoPanel.refresh();
+    infoModal.refresh();
     Storage.save(graph);
     toast.ok(`+${repos.length} repos`);
   } catch (e) {
@@ -182,7 +189,6 @@ function removeNode(node) {
   sim.remove(node.id);
   renderer.renderPos.delete(node.id);
   if (selected === node) selectNode(null);
-  if (renderer.hovered === node) { renderer.setHovered(null); updateInfoPanel(); }
   Storage.save(graph);
   toast.show(node.type === 'repo' ? `removed ${node.name}` : `removed @${node.login}`);
 }
@@ -191,7 +197,7 @@ function clearGraph() {
   graph.clear(); sim.clear(); renderer.renderPos.clear(); avatarCache.clear();
   selected = null;
   renderer.setSelected(null); renderer.setHovered(null);
-  updateInfoPanel(); Storage.clear();
+  Storage.clear();
   toast.show('graph cleared');
 }
 
@@ -215,4 +221,4 @@ function boot() {
 }
 
 boot();
-window.__ghc = { graph, sim, renderer, camera };
+window.__ghc = { graph, sim, renderer, camera, infoModal };
