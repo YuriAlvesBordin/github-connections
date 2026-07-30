@@ -1,7 +1,3 @@
-/**
- * storage.js: localStorage persistence for the known graph.
- */
-
 import { CONFIG } from './config.js';
 
 const KEY = CONFIG.STORAGE_KEY;
@@ -26,14 +22,11 @@ export const Storage = {
     }
   },
 
-  load(GraphClass) {
+  load() {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return null;
-      const data = JSON.parse(raw);
-      const g = new GraphClass();
-      if (g.fromJSON(data)) return g;
-      return null;
+      return JSON.parse(raw);
     } catch (e) {
       console.warn('[storage] load failed:', e);
       return null;

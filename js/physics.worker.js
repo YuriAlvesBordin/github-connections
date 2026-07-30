@@ -255,7 +255,7 @@ self.onmessage = (e) => {
     case 'init': {
       W = data.W; H = data.H;
       nodes = data.nodes.map((n) => ({ id: n.id, mass: n.mass || 1 }));
-      edges = data.edges.map(([a, b]) => [a, b]);
+      edges = data.edges.map((e) => e.length > 2 ? [e[0], e[1], e[2]] : [e[0], e[1]]);
       sim = {};
       nodes.forEach((n, i) => {
         if (!sim[n.id]) {
@@ -269,16 +269,18 @@ self.onmessage = (e) => {
     }
 
     case 'addNodes': {
-      const prevLen = nodes.length;
+      let newIdx = nodes.length;
       for (const n of data.nodes) {
         if (sim[n.id]) continue;
         nodes.push({ id: n.id, mass: n.mass || 1 });
-        const p = spawnPosition(n.id, prevLen + nodes.length, nodes.length + 1);
+        const p = spawnPosition(n.id, newIdx, nodes.length);
         sim[n.id] = { x: p.x, y: p.y, vx: 0, vy: 0, mass: n.mass || 1, pinned: false };
+        newIdx++;
       }
-      for (const [a, b] of data.edges) {
-        if (!edges.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) {
-          edges.push([a, b]);
+      for (const e of data.edges) {
+        const a = e[0], b = e[1];
+        if (!edges.some((ed) => (ed[0] === a && ed[1] === b) || (ed[0] === b && ed[1] === a))) {
+          edges.push(e.length > 2 ? [a, b, e[2]] : [a, b]);
         }
       }
       wake(0.3);

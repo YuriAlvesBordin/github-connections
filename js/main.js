@@ -198,9 +198,9 @@ function clearGraph() {
 function boot() {
   if (booted) return;
   booted = true;
-  const persisted = Storage.load(Object.getPrototypeOf(graph).constructor);
-  if (persisted && persisted.nodes.size > 0) {
-    graph.fromJSON(persisted.toJSON());
+  const data = Storage.load();
+  if (data && data.nodes && data.nodes.length > 0) {
+    graph.fromJSON(data);
     const allEdges = [];
     for (const [a, b] of graph.pairs()) allEdges.push([a, b]);
     for (const [uid, rid] of graph.repoPairs()) allEdges.push([uid, rid, 80]);

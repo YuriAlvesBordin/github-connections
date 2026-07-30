@@ -185,6 +185,7 @@ export const graph = {
 
   mutualCount(id) {
     const out = this.outgoing.get(id);
+    if (!out) return 0;
     let n = 0;
     for (const other of out) {
       if (this.follows(other, id)) n++;
@@ -196,8 +197,8 @@ export const graph = {
     const out = this.outgoing.get(id);
     const inc = this.incoming.get(id);
     let n = 0;
-    for (const other of out) if (!this.follows(other, id)) n++;
-    for (const other of inc) if (!this.follows(id, other)) n++;
+    if (out) for (const other of out) if (!this.follows(other, id)) n++;
+    if (inc) for (const other of inc) if (!this.follows(id, other)) n++;
     return n;
   },
 

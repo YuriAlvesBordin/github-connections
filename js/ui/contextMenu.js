@@ -1,7 +1,3 @@
-/**
- * contextMenu.js: right-click context menu for nodes.
- */
-
 export class ContextMenu {
   constructor({ onExpand, onFocus, onOpenGithub, onDelete }) {
     this.onExpand = onExpand;
@@ -40,6 +36,7 @@ export class ContextMenu {
 
   _hideOnClickOutside() {
     document.addEventListener('pointerdown', (e) => {
+      if (!this.menu.classList.contains('visible')) return;
       if (!this.menu.contains(e.target)) this.hide();
     });
   }
@@ -55,7 +52,8 @@ export class ContextMenu {
     this.itemDelete.style.display = 'block';
 
     this.itemExpand.textContent = node.expanded ? 'already expanded' : 'expand connections';
-    this.itemExpand.disabled = node.expanded;
+    this.itemExpand.classList.toggle('disabled', node.expanded || !isUser);
+    this.itemExpand.style.pointerEvents = (node.expanded || !isUser) ? 'none' : '';
 
     this.menu.style.left = `${x}px`;
     this.menu.style.top = `${y}px`;

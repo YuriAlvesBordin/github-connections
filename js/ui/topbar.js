@@ -1,7 +1,3 @@
-/**
- * topbar.js: top toolbar with username input, load/clear/fit/reheat buttons.
- */
-
 export class Topbar {
   constructor({ onLoad, onClear, onFit, onReheat }) {
     this.onLoad = onLoad;

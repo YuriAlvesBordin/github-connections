@@ -1,7 +1,3 @@
-/**
- * filterPanel.js: filter panel for connection types and display options.
- */
-
 export class FilterPanel {
   constructor({ onChange }) {
     this.onChange = onChange;

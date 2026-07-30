@@ -1,4 +1,4 @@
-import { CONFIG, lerp } from '../config.js';
+import { CONFIG, clamp, lerp } from '../config.js';
 
 export class Camera {
   constructor() {
@@ -49,15 +49,23 @@ export class Camera {
 
   zoom(factor, sx = this.W / 2, sy = this.H / 2) {
     const before = this.screenToWorld(sx, sy);
-    this.targetScale = Math.max(CONFIG.RENDER.MIN_SCALE, Math.min(CONFIG.RENDER.MAX_SCALE, this.targetScale * factor));
-    const after = this.screenToWorld(sx, sy);
-    this.targetX += before.x - after.x;
-    this.targetY += before.y - after.y;
+
+    this.targetScale = clamp(
+      this.targetScale * factor,
+      CONFIG.RENDER.MIN_SCALE,
+      CONFIG.RENDER.MAX_SCALE
+    );
+
+    const afterX = (sx - this.W / 2) / this.targetScale + this.targetX;
+    const afterY = (sy - this.H / 2) / this.targetScale + this.targetY;
+
+    this.targetX += before.x - afterX;
+    this.targetY += before.y - afterY;
   }
 
   pan(dx, dy) {
-    this.targetX -= dx / this.scale;
-    this.targetY -= dy / this.scale;
+    this.targetX -= dx / this.targetScale;
+    this.targetY -= dy / this.targetScale;
   }
 
   centerOn(wx, wy) {
@@ -81,19 +89,8 @@ export class Camera {
     const scaleX = (W - padding * 2) / bw;
     const scaleY = (H - padding * 2) / bh;
     const target = Math.min(scaleX, scaleY);
-    this.targetScale = Math.max(CONFIG.RENDER.MIN_SCALE, Math.min(CONFIG.RENDER.MAX_SCALE, target));
+    this.targetScale = clamp(target, CONFIG.RENDER.MIN_SCALE, CONFIG.RENDER.MAX_SCALE);
     this.targetX = (bbox.minX + bbox.maxX) / 2;
     this.targetY = (bbox.minY + bbox.maxY) / 2;
-  }
-
-  getWorldBounds() {
-    const hw = this.W / 2 / this.scale;
-    const hh = this.H / 2 / this.scale;
-    return {
-      minX: this.x - hw,
-      maxX: this.x + hw,
-      minY: this.y - hh,
-      maxY: this.y + hh,
-    };
   }
 }

@@ -1,22 +1,4 @@
-/**
- * renderer.js: canvas renderer for the graph.
- *
- * Draws:
- *   1. Edges (filtered by current mode) - straight with arrows on one-way
- *   2. Repo edges (user -> repo) - dashed, gray, always visible
- *   3. Nodes - circular avatars (users) or smaller purple dots (repos)
- *   4. Labels - only when zoomed in or node is hovered/selected
- *
- * Pop-in animation: each node has an `addedAt` timestamp. For the first
- * POP_DURATION ms after appearing, the node scales from 0 to 1 with a
- * slight overshoot (ease-out-back) and fades in opacity.
- *
- * Filter isolation: when filterMode is 'mutual' or 'oneway', only nodes
- * that are incident to at least one edge of the matching type are drawn.
- * Repo nodes are drawn only if their parent user is visible.
- */
-
-import { CONFIG, lerp, clamp, smoothstep } from '../config.js';
+import { CONFIG, lerp, clamp } from '../config.js';
 import { avatarCache } from './avatarCache.js';
 
 const PALETTE = {
@@ -34,9 +16,11 @@ const POP_DURATION = 400;
 const POP_DURATION_REPO = 250;
 
 function popScale(t) {
+  if (t <= 0) return 0;
+  if (t >= 1) return 1;
   const c1 = 1.70158;
   const c3 = c1 + 1;
-  return 1 - c3 * Math.pow(1 - t, 3) + c1 * Math.pow(1 - t, 4);
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
 function cssVar(name, fallback) {
@@ -51,7 +35,7 @@ function cssVar(name, fallback) {
 export class Renderer {
   constructor(canvas, graph, sim, camera) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
+    this.ctx = canvas.getContext('2d', { alpha: false });
     this.graph = graph;
     this.sim = sim;
     this.camera = camera;
@@ -67,18 +51,45 @@ export class Renderer {
     this.showArrows = true;
     this.showLabels = true;
 
-    this._ringBase = cssVar('--ring-base', '#8e8e93');
+    this.W = 0;
+    this.H = 0;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    this._refreshTheme();
+
+    this._running = true;
+    this._tick = this._tick.bind(this);
+
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    mql.addEventListener('change', () => this._refreshTheme());
+
+    requestAnimationFrame(this._tick);
+  }
+
+  _refreshTheme() {
+    this._bgColor = cssVar('--bg', '#0d1117');
+    this._ringBase = cssVar('--ring-base', 'rgba(142,142,147,0.22)');
     this._labelColor = cssVar('--label-color', PALETTE.label);
     this._labelHiColor = cssVar('--label-hi', PALETTE.labelHi);
     this._labelBgColor = cssVar('--label-bg', 'rgba(13,17,23,0.85)');
     this._fallbackColor = cssVar('--fallback', PALETTE.fallback);
     this._initialsBg = cssVar('--initials-bg', '#3a3a44');
     this._initialsFg = cssVar('--initials-fg', '#f5f5f7');
+  }
 
-    this._running = true;
-    this._lastTime = 0;
-    this._tick = this._tick.bind(this);
-    requestAnimationFrame(this._tick);
+  _resize() {
+    this.W = window.innerWidth;
+    this.H = window.innerHeight;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = this.W * this.dpr;
+    this.canvas.height = this.H * this.dpr;
+    this.canvas.style.width = this.W + 'px';
+    this.canvas.style.height = this.H + 'px';
+    this.camera.resize(this.W, this.H);
+    this.sim.resize(this.W, this.H);
   }
 
   destroy() {
@@ -87,7 +98,8 @@ export class Renderer {
 
   _tick(time) {
     if (!this._running) return;
-    this._lastTime = time;
+    this.sim.step();
+    this.camera.tick();
     this._updatePositions();
     this._computeVisibleNodes();
     this._draw();
@@ -95,7 +107,7 @@ export class Renderer {
   }
 
   _updatePositions() {
-    const lerpFactor = this.sim.sleeping ? 1.0 : CONFIG.RENDER.LERP_AWAKE;
+    const lerpFactor = this.sim.sleeping ? CONFIG.RENDER.LERP_SLEEP : CONFIG.RENDER.LERP_AWAKE;
     for (const [id, pos] of this.sim.positions) {
       const cur = this.renderPos.get(id);
       if (!cur) {
@@ -104,6 +116,9 @@ export class Renderer {
         cur.x = lerp(cur.x, pos.x, lerpFactor);
         cur.y = lerp(cur.y, pos.y, lerpFactor);
       }
+    }
+    for (const id of Array.from(this.renderPos.keys())) {
+      if (!this.graph.nodes.has(id)) this.renderPos.delete(id);
     }
   }
 
@@ -129,41 +144,25 @@ export class Renderer {
     }
   }
 
-  setFilter(mode) {
-    this.filterMode = mode;
-  }
-
-  setShowArrows(v) {
-    this.showArrows = v;
-  }
-
-  setShowLabels(v) {
-    this.showLabels = v;
-  }
-
-  setSelected(node) {
-    this.selected = node;
-  }
-
-  setHovered(node) {
-    this.hovered = node;
-  }
-
-  setDragging(id) {
-    this.draggingId = id;
-  }
+  setFilter(mode) { this.filterMode = mode; }
+  setShowArrows(v) { this.showArrows = v; }
+  setShowLabels(v) { this.showLabels = v; }
+  setSelected(node) { this.selected = node; }
+  setHovered(node) { this.hovered = node; }
+  setDragging(id) { this.draggingId = id; }
 
   pickNode(screenX, screenY) {
     const world = this.camera.screenToWorld(screenX, screenY);
     let bestNode = null;
     let bestDist = Infinity;
 
-    for (const node of this.graph.nodes.values()) {
+    const nodes = Array.from(this.graph.nodes.values()).reverse();
+    for (const node of nodes) {
       if (!this._visibleNodes.has(node.id)) continue;
       const p = this.renderPos.get(node.id);
       if (!p) continue;
 
-      const r = this._radius(node);
+      const r = this._radius(node) + 4 / this.camera.scale;
       const dx = p.x - world.x;
       const dy = p.y - world.y;
       const dist = Math.hypot(dx, dy);
@@ -174,10 +173,6 @@ export class Renderer {
       }
     }
     return bestNode;
-  }
-
-  pick(screenX, screenY) {
-    return this.pickNode(screenX, screenY);
   }
 
   bbox() {
@@ -198,10 +193,18 @@ export class Renderer {
 
   _draw() {
     const ctx = this.ctx;
-    const W = this.canvas.width;
-    const H = this.canvas.height;
+    const camera = this.camera;
 
-    ctx.clearRect(0, 0, W, H);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = this._bgColor;
+    ctx.fillRect(0, 0, this.W * this.dpr, this.H * this.dpr);
+
+    ctx.setTransform(
+      camera.scale * this.dpr, 0,
+      0, camera.scale * this.dpr,
+      (-camera.x * camera.scale + this.W / 2) * this.dpr,
+      (-camera.y * camera.scale + this.H / 2) * this.dpr
+    );
 
     this._drawEdges(ctx);
     this._drawRepoEdges(ctx);
@@ -211,7 +214,8 @@ export class Renderer {
 
   _radius(node) {
     if (node.type === 'repo') return CONFIG.RENDER.BASE_NODE_RADIUS * 0.55;
-    return CONFIG.RENDER.BASE_NODE_RADIUS;
+    const deg = this.graph.degree(node.id);
+    return CONFIG.RENDER.BASE_NODE_RADIUS + Math.min(deg, 30) * 0.35;
   }
 
   _drawEdges(ctx) {
@@ -250,16 +254,18 @@ export class Renderer {
       ctx.stroke();
 
       if (this.showArrows && !isMutual) {
-        let fx, fy, tipX, tipY, baseX, baseY;
+        let tipX, tipY;
         if (type === 'oneway') {
-          fx = pa.x; fy = pa.y; tipX = tx; tipY = ty;
+          tipX = tx; tipY = ty;
         } else {
-          fx = pb.x; fy = pb.y; tipX = sx; tipY = sy;
+          tipX = sx; tipY = sy;
         }
+        const dirX = type === 'oneway' ? ux : -ux;
+        const dirY = type === 'oneway' ? uy : -uy;
         const baseDist = 8 / scale;
-        baseX = tipX - ux * baseDist;
-        baseY = tipY - uy * baseDist;
-        const px = -uy, py = ux;
+        const baseX = tipX - dirX * baseDist;
+        const baseY = tipY - dirY * baseDist;
+        const px = -dirY, py = dirX;
         const w = 4 / scale;
 
         ctx.fillStyle = color;
@@ -298,7 +304,7 @@ export class Renderer {
         const boosted = involves || (selectedId === userId || selectedId === rid);
         const alpha = dim ? 0.12 : (boosted ? 0.85 : 0.45);
 
-        ctx.strokeStyle = `rgba(167,139,250,${alpha})`;
+        ctx.strokeStyle = `rgba(191,90,242,${alpha})`;
         ctx.lineWidth = (boosted ? 1.4 : 1) / scale;
         ctx.setLineDash([4 / scale, 3 / scale]);
         ctx.beginPath();
@@ -321,7 +327,7 @@ export class Renderer {
 
       const dur = node.type === 'repo' ? POP_DURATION_REPO : POP_DURATION;
       const age = now - (node.addedAt ?? now);
-      if (age < 0) continue;
+      if (age < 0) continue; // staggered - not yet appeared
       const popT = clamp(age / dur, 0, 1);
       const popS = popScale(popT);
       if (popS <= 0) continue;
@@ -400,7 +406,7 @@ export class Renderer {
     ctx.fillStyle = PALETTE.repo;
     ctx.fill();
 
-    ctx.fillStyle = this._initialsBg;
+    ctx.fillStyle = '#ffffff';
     ctx.font = `600 ${Math.floor(r * 1.0)}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';

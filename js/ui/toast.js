@@ -1,7 +1,3 @@
-/**
- * toast.js: transient status messages.
- */
-
 export const toast = {
   show(message, duration = 3000) {
     const el = document.getElementById('toast');

@@ -1,9 +1,3 @@
-/**
- * input.js: unified mouse / touch / keyboard interaction layer.
- */
-
-import { CONFIG } from '../config.js';
-
 const GESTURE = {
   CLICK_MAX_MS: 300,
   LONG_PRESS_MS: 450,
@@ -23,7 +17,6 @@ export class InputController {
     this.draggingNode = null;
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
-    this.panStartOffset = { x: 0, y: 0 };
     this.downPos = { x: 0, y: 0 };
     this.downTime = 0;
     this.moveThreshold = GESTURE.MOVE_MIN_PX;
@@ -80,7 +73,6 @@ export class InputController {
     } else if (button === 0 || button === 1 || (event && event.altKey)) {
       this.panning = true;
       this.panStart = { x, y };
-      this.panStartOffset = { x: this.camera.offsetX, y: this.camera.offsetY };
       this.canvas.classList.add('grabbing');
       if (event) event.preventDefault();
     }
@@ -94,7 +86,7 @@ export class InputController {
         this.movedExceeded = true;
         clearTimeout(this._longPressTimer);
         this.draggingNode = this.potentialNode;
-        this.renderer.draggingId = this.draggingNode.id;
+        this.renderer.setDragging(this.draggingNode.id);
         this.canvas.classList.add('dragging');
       }
     }
@@ -105,8 +97,8 @@ export class InputController {
     } else if (this.panning) {
       const dx = x - this.panStart.x;
       const dy = y - this.panStart.y;
-      this.camera.offsetX = this.panStartOffset.x + dx;
-      this.camera.offsetY = this.panStartOffset.y + dy;
+      this.camera.pan(dx, dy);
+      this.panStart = { x, y };
     } else {
       const node = this._pickNode(x, y);
       this.cb.onHover?.(node);
@@ -123,7 +115,7 @@ export class InputController {
 
     if (wasDragging) {
       this.cb.onEndDragNode?.(wasDragging);
-      this.renderer.draggingId = null;
+      this.renderer.setDragging(null);
     }
 
     this.draggingNode = null;
@@ -197,8 +189,9 @@ export class InputController {
 
   _nodeRadius(node) {
     if (typeof this.renderer?._radius === 'function') return this.renderer._radius(node);
-    return CONFIG.RENDER.BASE_NODE_RADIUS;
+    return 14;
   }
+
 
   _onTouchStart(e) {
     if (e.touches.length === 2) {
@@ -247,6 +240,7 @@ export class InputController {
     const a = e.touches[0], b = e.touches[1];
     return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
   }
+
 
   _onKeyDown(e) {
     const tag = (e.target.tagName || '').toLowerCase();

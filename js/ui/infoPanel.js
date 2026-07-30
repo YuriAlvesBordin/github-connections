@@ -1,7 +1,3 @@
-/**
- * infoPanel.js: right sidebar showing details for the hovered/selected node.
- */
-
 export class InfoPanel {
   constructor({ graph, onExpand, onShowRepos }) {
     this.graph = graph;
@@ -73,6 +69,9 @@ export class InfoPanel {
     this.btnExpand.disabled = node.expanded || isRepo;
 
     this.btnRepos.style.display = isRepo ? 'none' : 'block';
+    const hasRepos = !isRepo && this.graph.repoEdges.has(node.id) && this.graph.repoEdges.get(node.id).size > 0;
+    this.btnRepos.textContent = hasRepos ? 'repos shown' : 'show top repos';
+    this.btnRepos.disabled = hasRepos;
   }
 
   refresh() {
