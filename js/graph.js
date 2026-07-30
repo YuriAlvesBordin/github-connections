@@ -176,6 +176,8 @@ export const graph = {
    *   'oneway'              (a → b only, where a < b by id)
    *   'oneway-reverse'      (b → a only — same pair as 'oneway' but
    *                          we tag the actual follower)
+   *
+   * For rendering we only need the unordered pair + the directionality.
    */
   pairs() {
     const seen = new Set();
@@ -242,7 +244,7 @@ export const graph = {
     return n;
   },
 
-  /** How many of `id`'s connections are one-way? */
+  /** How many of `id`'s connections are one-way (id follows but not followed back, or vice versa)? */
   onewayCount(id) {
     const out = this.outgoing.get(id);
     const inc = this.incoming.get(id);
@@ -313,18 +315,3 @@ export const graph = {
     return true;
   },
 };
-
-export function addNode(id, x, y, meta = {}) {
-  graph.addUser({ login: id, avatar_url: meta.avatarUrl, bio: meta.bio, html_url: meta.profileUrl, name: meta.name });
-}
-
-export function addEdge(source, target) {
-  const fromId = graph.idOf(source);
-  const toId = graph.idOf(target);
-  if (fromId && toId) graph.addDirectedEdge(fromId, toId);
-}
-
-export function getNodeAt(x, y) {
-  // This will be overridden by the renderer which knows screen positions
-  return null;
-}
