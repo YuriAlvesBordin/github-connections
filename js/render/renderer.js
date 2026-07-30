@@ -153,6 +153,29 @@ export class Renderer {
     this.draggingId = id;
   }
 
+  pickNode(screenX, screenY) {
+    const world = this.camera.screenToWorld(screenX, screenY);
+    let bestNode = null;
+    let bestDist = Infinity;
+
+    for (const node of this.graph.nodes.values()) {
+      if (!this._visibleNodes.has(node.id)) continue;
+      const p = this.renderPos.get(node.id);
+      if (!p) continue;
+
+      const r = this._radius(node);
+      const dx = p.x - world.x;
+      const dy = p.y - world.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist <= r && dist < bestDist) {
+        bestDist = dist;
+        bestNode = node;
+      }
+    }
+    return bestNode;
+  }
+
   bbox() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;
