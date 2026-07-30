@@ -22,8 +22,17 @@ function clearGraph() {
     graph.edges.length = 0;
 }
 
+function setLoading(isLoading) {
+    usernameInput.classList.toggle('loading', isLoading);
+}
+
+function setError(isError) {
+    usernameInput.classList.toggle('error', isError);
+}
+
 async function loadUser(username) {
-    usernameInput.classList.add('loading');
+    setLoading(true);
+    setError(false);
 
     clearGraph();
 
@@ -58,8 +67,9 @@ async function loadUser(username) {
         });
     } catch (err) {
         console.error(err);
+        setError(true);
     } finally {
-        usernameInput.classList.remove('loading');
+        setLoading(false);
     }
 }
 
@@ -67,6 +77,8 @@ let debounceTimer = null;
 
 usernameInput.addEventListener('input', () => {
     const value = usernameInput.value.trim();
+
+    setError(false);
 
     if (!value) {
         clearGraph();
