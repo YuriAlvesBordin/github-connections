@@ -1,11 +1,13 @@
 export class ContextMenu {
-  constructor({ onExpand, onFocus, onOpenGithub, onDelete }) {
+  constructor({ onInfo, onExpand, onFocus, onOpenGithub, onDelete }) {
+    this.onInfo = onInfo;
     this.onExpand = onExpand;
     this.onFocus = onFocus;
     this.onOpenGithub = onOpenGithub;
     this.onDelete = onDelete;
 
     this.menu = document.getElementById('ctx-menu');
+    this.itemInfo = document.getElementById('ctx-info');
     this.itemExpand = document.getElementById('ctx-expand');
     this.itemFocus = document.getElementById('ctx-focus');
     this.itemOpen = document.getElementById('ctx-open');
@@ -16,6 +18,10 @@ export class ContextMenu {
   }
 
   _bind() {
+    this.itemInfo.addEventListener('click', () => {
+      if (this.node) this.onInfo(this.node);
+      this.hide();
+    });
     this.itemExpand.addEventListener('click', () => {
       if (this.node) this.onExpand(this.node);
       this.hide();
@@ -46,18 +52,25 @@ export class ContextMenu {
     if (!node) return;
 
     const isUser = node.type === 'user';
-    this.itemExpand.style.display = isUser ? 'block' : 'none';
-    this.itemFocus.style.display = 'block';
-    this.itemOpen.style.display = 'block';
-    this.itemDelete.style.display = 'block';
+    this.itemExpand.style.display = isUser ? 'flex' : 'none';
+    this.itemFocus.style.display = 'flex';
+    this.itemOpen.style.display = 'flex';
+    this.itemDelete.style.display = 'flex';
 
     this.itemExpand.textContent = node.expanded ? 'already expanded' : 'expand connections';
     this.itemExpand.classList.toggle('disabled', node.expanded || !isUser);
-    this.itemExpand.style.pointerEvents = (node.expanded || !isUser) ? 'none' : '';
 
     this.menu.style.left = `${x}px`;
     this.menu.style.top = `${y}px`;
     this.menu.classList.add('visible');
+
+    const rect = this.menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth) {
+      this.menu.style.left = `${window.innerWidth - rect.width - 8}px`;
+    }
+    if (rect.bottom > window.innerHeight) {
+      this.menu.style.top = `${window.innerHeight - rect.height - 8}px`;
+    }
   }
 
   hide() {
