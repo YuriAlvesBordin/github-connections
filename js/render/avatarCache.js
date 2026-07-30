@@ -1,22 +1,14 @@
-/**
- * avatarCache.js — simple LRU cache for GitHub avatar images.
- *
- * Avatars are loaded as `new Image()` objects. When the cache exceeds
- * CACHE_MAX we evict the least-recently-used entries.
- */
-
 import { CONFIG } from '../config.js';
 
 const CACHE_MAX = CONFIG.AVATAR.CACHE_MAX;
 const LOAD_TIMEOUT = CONFIG.AVATAR.LOAD_TIMEOUT;
 const FALLBACK_COLOR = CONFIG.AVATAR.FALLBACK_COLOR;
 
-const cache = new Map();        // url -> { img, promise, lastUsed }
-const loading = new Map();      // url -> promise (in-flight)
+const cache = new Map();
+const loading = new Map();
 
 function evictIfNeeded() {
   if (cache.size <= CACHE_MAX) return;
-  // Find LRU entry.
   let oldest = Infinity, oldestKey = null;
   for (const [url, entry] of cache) {
     if (entry.lastUsed < oldest) {
@@ -27,23 +19,15 @@ function evictIfNeeded() {
   if (oldestKey) cache.delete(oldestKey);
 }
 
-/**
- * Load an avatar image.
- * Returns a promise that resolves to an HTMLImageElement (on success)
- * or null (on failure/timeout). The caller should check `img.complete`
- * and `img.naturalWidth > 0` before drawing.
- */
 export async function loadAvatar(url) {
   if (!url) return null;
 
-  // Return cached image if available and valid.
   const cached = cache.get(url);
   if (cached && cached.img.complete && cached.img.naturalWidth > 0) {
     cached.lastUsed = Date.now();
     return cached.img;
   }
 
-  // If already loading, return the in-flight promise.
   const inFlight = loading.get(url);
   if (inFlight) return inFlight;
 
@@ -90,10 +74,6 @@ export async function loadAvatar(url) {
   }
 }
 
-/**
- * Draw an avatar into a circular clipping region.
- * If the image isn't ready, draws a fallback circle.
- */
 export function drawAvatar(ctx, url, cx, cy, radius) {
   ctx.save();
   ctx.beginPath();
@@ -112,11 +92,9 @@ export function drawAvatar(ctx, url, cx, cy, radius) {
   ctx.restore();
 }
 
-/** Clear the cache. */
 export function clear() {
   cache.clear();
   loading.clear();
 }
 
-/** Expose for debugging. */
 export const avatarCache = { cache, loading, loadAvatar, drawAvatar, clear };
