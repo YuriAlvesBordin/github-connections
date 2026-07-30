@@ -1,64 +1,278 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Connections</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #0d1117;
-            color: #c9d1d9;
-            overflow: hidden;
-        }
-        #canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-        #ui {
-            position: fixed;
-            top: 16px;
-            left: 16px;
-            z-index: 10;
-        }
-        #username-input {
-            padding: 8px 12px;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            background: #161b22;
-            color: #c9d1d9;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        #username-input:focus {
-            border-color: #58a6ff;
-        }
-        #username-input.loading {
-            border-color: #58a6ff;
-            animation: pulse 1s infinite;
-        }
-        #username-input.error {
-            border-color: #f85149;
-            box-shadow: 0 0 0 1px #f85149;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Interactive graph of GitHub user connections" />
+  <title>GitHub Connections · Graph View</title>
+  <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #0d1117;
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent-hover: #79b8ff;
+      --danger: #f85149;
+      --card: #161b22;
+      --card-hover: #21262d;
+      --ring-base: rgba(142,142,147,0.22);
+      --label-color: rgba(142,142,147,0.78);
+      --label-hi: #ffffff;
+      --label-bg: rgba(13,17,23,0.85);
+      --fallback: #f5f5f7;
+      --initials-bg: #3a3a44;
+      --initials-fg: #f5f5f7;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #ffffff;
+        --fg: #1d1d1f;
+        --muted: #6e6e73;
+        --border: #d2d2d7;
+        --accent: #0071e3;
+        --accent-hover: #0077ed;
+        --danger: #d1242f;
+        --card: #f5f5f7;
+        --card-hover: #e5e5e7;
+        --ring-base: rgba(0,0,0,0.18);
+        --label-color: rgba(60,60,67,0.6);
+        --label-hi: #1d1d1f;
+        --label-bg: rgba(255,255,255,0.7);
+        --fallback: #e5e5ea;
+        --initials-bg: #e5e5ea;
+        --initials-fg: #6e6e73;
+      }
+    }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      overflow: hidden;
+    }
+    .skip-link {
+      position: absolute; top: -100%; left: 16px;
+      padding: 8px 12px; background: var(--accent); color: white;
+      border-radius: 6px; z-index: 10000;
+    }
+    .skip-link:focus { top: 16px; }
+
+    #canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+
+    .topbar {
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 100; display: flex; gap: 8px; align-items: center;
+      background: rgba(22,27,34,0.9); border: 1px solid var(--border);
+      border-radius: 10px; padding: 6px 8px; backdrop-filter: blur(8px);
+    }
+    .topbar-group { display: flex; gap: 4px; align-items: center; }
+    .topbar-group + .topbar-group { border-left: 1px solid var(--border); padding-left: 8px; margin-left: 4px; }
+
+    #username-input {
+      width: 200px; padding: 6px 10px; font-size: 13px;
+      background: var(--card); color: var(--fg); border: 1px solid var(--border);
+      border-radius: 6px; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    #username-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,0.2); }
+    #username-input.loading { border-color: var(--accent); animation: pulse 1s infinite; }
+    #username-input.error { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; border: none; border-radius: 6px;
+      background: var(--card); color: var(--fg); cursor: pointer;
+      transition: background 0.15s, color 0.15s; }
+    .btn:hover { background: var(--card-hover); }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-icon svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    .filter-panel {
+      position: fixed; bottom: 16px; left: 16px; z-index: 100;
+      background: rgba(22,27,34,0.95); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(8px);
+      min-width: 180px; font-size: 12px;
+    }
+    .filter-title { font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .filter-row { display: flex; gap: 4px; margin-bottom: 8px; }
+    .filter-chip {
+      flex: 1; padding: 4px 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--fg); border-radius: 4px;
+      font-size: 11px; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-chip:hover { background: var(--card-hover); }
+    .filter-chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+    .filter-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--fg); }
+    .filter-toggle input { accent-color: var(--accent); }
+    .filter-legend { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .legend-item { display: flex; align-items: center; gap: 6px; margin: 3px 0; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .legend-mutual { background: #34c759; }
+    .legend-oneway { background: #ff9f0a; }
+    .legend-repo { background: #bf5af2; }
+    .filter-hint { margin-top: 8px; font-size: 10px; color: var(--muted); }
+
+    .info-panel {
+      position: fixed; bottom: 16px; right: 16px; z-index: 100;
+      width: 260px; background: rgba(22,27,34,0.95); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; backdrop-filter: blur(8px);
+      opacity: 0; visibility: hidden; transform: translateY(8px);
+      transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
+    }
+    .info-panel.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+    .info-header { display: flex; gap: 10px; padding: 12px; }
+    .info-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: var(--fallback); flex-shrink: 0; }
+    .info-identity { flex: 1; min-width: 0; }
+    .info-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .info-link { font-size: 11px; color: var(--accent); text-decoration: none; }
+    .info-link:hover { text-decoration: underline; }
+    .info-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .info-desc { padding: 0 12px 8px; font-size: 12px; color: var(--fg); line-height: 1.4; white-space: pre-wrap; }
+    .info-stats { display: flex; justify-content: space-around; padding: 8px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 0 12px; }
+    .info-stat { text-align: center; }
+    .info-stat-value { font-size: 16px; font-weight: 600; }
+    .info-stat-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+    .info-panel .btn-block { width: calc(100% - 24px); margin: 10px 12px; padding: 8px 0; font-size: 12px; }
+    .info-panel .btn-primary { width: 100%; }
+    .info-panel .btn:disabled { opacity: 0.5; }
+
+    .ctx-menu {
+      position: fixed; z-index: 1000; background: var(--card);
+      border: 1px solid var(--border); border-radius: 8px; padding: 4px;
+      min-width: 160px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      opacity: 0; visibility: hidden; transform: scale(0.95);
+      transition: opacity 0.1s, visibility 0.1s, transform 0.1s;
+    }
+    .ctx-menu.visible { opacity: 1; visibility: visible; transform: scale(1); }
+    .ctx-item { padding: 8px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; user-select: none; }
+    .ctx-item:hover { background: var(--card-hover); }
+    .ctx-item:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ctx-item.danger { color: var(--danger); }
+    .ctx-separator { height: 1px; background: var(--border); margin: 4px 0; }
+
+    .toast {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%) translateY(100px);
+      z-index: 2000; padding: 10px 16px; background: var(--card);
+      border: 1px solid var(--border); border-radius: 8px; font-size: 13px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); opacity: 0; visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+    }
+    .toast.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+
+    canvas.grabbing { cursor: grabbing !important; }
+    canvas.dragging { cursor: grabbing !important; }
+    canvas { cursor: grab; }
+
+    #rate-limit-bar {
+      position: fixed; bottom: 12px; right: 12px; z-index: 1000;
+      font: 11px monospace; color: var(--muted);
+      background: rgba(13,17,23,0.9); padding: 4px 8px;
+      border-radius: 4px; border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+  </style>
 </head>
 <body>
-    <div id="ui">
-        <input type="text" id="username-input" placeholder="GitHub username">
+  <a href="#canvas" class="skip-link">Skip to graph</a>
+
+  <canvas id="canvas" aria-label="GitHub connections graph" tabindex="0"></canvas>
+
+  <header id="topbar" class="topbar">
+    <div class="topbar-group">
+      <input id="username-input" type="text" placeholder="github username" autocomplete="off" spellcheck="false" />
+      <button id="btn-load" class="btn btn-primary btn-icon" type="button" title="load user" aria-label="load user">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="10" cy="7" r="4"/>
+          <path d="M2 17c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+      </button>
+      <button id="btn-clear" class="btn btn-icon" type="button" title="clear graph" aria-label="clear graph">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h14M8 6V4h4v2M5 6l1 11h8l1-11"/>
+        </svg>
+      </button>
     </div>
-    <canvas id="canvas"></canvas>
-    <script type="module" src="js/main.js"></script>
+    <div class="topbar-group">
+      <button id="btn-fit" class="btn btn-icon" type="button" title="fit to view (F)" aria-label="fit to view">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>
+        </svg>
+      </button>
+      <button id="btn-shuffle" class="btn btn-icon" type="button" title="re-heat simulation" aria-label="reheat simulation">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 4l12 12M16 4L4 16"/>
+          <circle cx="10" cy="10" r="3"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <aside id="filter-panel" class="filter-panel" aria-label="Connection filters">
+    <div class="filter-title">connections</div>
+    <div class="filter-row">
+      <button class="filter-chip active" data-filter="all">all</button>
+      <button class="filter-chip" data-filter="mutual">mutual</button>
+      <button class="filter-chip" data-filter="oneway">one-way</button>
+    </div>
+    <label class="filter-toggle">
+      <input type="checkbox" id="filter-arrows" checked />
+      <span>show arrows on one-way edges</span>
+    </label>
+    <label class="filter-toggle">
+      <input type="checkbox" id="filter-labels" checked />
+      <span>show labels</span>
+    </label>
+    <div class="filter-legend">
+      <div class="legend-item"><span class="legend-dot legend-mutual"></span>mutual follow</div>
+      <div class="legend-item"><span class="legend-dot legend-oneway"></span>one-way follow</div>
+      <div class="legend-item"><span class="legend-dot legend-repo"></span>top repos</div>
+    </div>
+    <div class="filter-hint">tap = open · hold = expand · double-tap = repos</div>
+  </aside>
+
+  <aside id="info-panel" class="info-panel" aria-label="Selected node info">
+    <div class="info-header">
+      <img id="info-avatar" class="info-avatar" alt="" />
+      <div class="info-identity">
+        <h3 id="info-title">—</h3>
+        <a id="info-link" class="info-link" href="#" target="_blank" rel="noreferrer noopener">view on github ↗</a>
+      </div>
+    </div>
+    <div id="info-sub" class="info-sub">—</div>
+    <p id="info-desc" class="info-desc"></p>
+    <div class="info-stats">
+      <div class="info-stat">
+        <div class="info-stat-value" id="info-mutual">0</div>
+        <div class="info-stat-label">mutual</div>
+      </div>
+      <div class="info-stat">
+        <div class="info-stat-value" id="info-oneway">0</div>
+        <div class="info-stat-label">one-way</div>
+      </div>
+      <div class="info-stat">
+        <div class="info-stat-value" id="info-total">0</div>
+        <div class="info-stat-label">total</div>
+      </div>
+    </div>
+    <button id="btn-expand" class="btn btn-primary btn-block" type="button">expand connections</button>
+    <button id="btn-repos" class="btn btn-block" type="button">show top repos</button>
+  </aside>
+
+  <div id="ctx-menu" class="ctx-menu" role="menu">
+    <div class="ctx-item" id="ctx-expand" role="menuitem">expand connections</div>
+    <div class="ctx-item" id="ctx-focus" role="menuitem">focus & center</div>
+    <div class="ctx-item" id="ctx-open" role="menuitem">open on github ↗</div>
+    <div class="ctx-separator"></div>
+    <div class="ctx-item danger" id="ctx-delete" role="menuitem">remove node</div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="./js/main.js"></script>
 </body>
 </html>
