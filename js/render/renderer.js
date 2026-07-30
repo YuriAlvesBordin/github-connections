@@ -367,7 +367,6 @@ export class Renderer {
     ctx.fill();
 
     if (node.avatar) {
-      avatarCache.loadAvatar(node.avatar);
       avatarCache.drawAvatar(ctx, node.avatar, p.x, p.y, r);
     } else {
       this._drawInitials(ctx, node, p, r);
