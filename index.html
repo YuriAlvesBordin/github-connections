@@ -21,9 +21,39 @@
             width: 100vw;
             height: 100vh;
         }
+        #ui {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+        }
+        #username-input {
+            padding: 8px 12px;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: #161b22;
+            color: #c9d1d9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #username-input:focus {
+            border-color: #58a6ff;
+        }
+        #username-input.loading {
+            border-color: #58a6ff;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
     </style>
 </head>
 <body>
+    <div id="ui">
+        <input type="text" id="username-input" placeholder="GitHub username">
+    </div>
     <canvas id="canvas"></canvas>
     <script type="module" src="js/main.js"></script>
 </body>
