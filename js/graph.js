@@ -1,18 +1,3 @@
-/**
- * graph.js — directed graph model.
- *
- * Tracks nodes + directed follow edges (A → B means "A follows B").
- * Supports efficient queries for mutual vs one-way connections.
- *
- * Edges are stored as adjacency maps for O(1) lookups:
- *   outgoing: Map<id, Set<id>>   who this node follows
- *   incoming: Map<id, Set<id>>   who follows this node
- *
- * For rendering / physics we also expose a deduplicated pair list:
- *   pairs(): Array<[aId, bId, type]>
- *   where type ∈ { 'mutual', 'oneway-a-to-b', 'oneway-b-to-a' }
- */
-
 let _nextId = 1;
 
 export const graph = {
@@ -23,7 +8,6 @@ export const graph = {
   outgoing: new Map(),
   incoming: new Map(),
 
-  /** Reset everything. */
   clear() {
     this.nodes.clear();
     this.loginMap.clear();
@@ -34,12 +18,6 @@ export const graph = {
     _nextId = 1;
   },
 
-  /**
-   * Add a node from a raw GitHub user object.
-   * If a node with the same login exists, it is updated with fresh data.
-   * Returns the node id.
-   * `addedAt` lets the caller stagger pop-in animations.
-   */
   addUser(user, addedAt = Date.now()) {
     if (!user || !user.login) return null;
     const existing = this.loginMap.get(user.login);
@@ -74,11 +52,6 @@ export const graph = {
     return id;
   },
 
-  /**
-   * Add a repo node attached to a user.
-   * Repos are stored separately from users (they don't participate in
-   * follow-edges or the login map). Returns the repo node id.
-   */
   addRepo(repo, userId, addedAt = Date.now()) {
     if (!repo || !repo.full_name) return null;
     const key = `${userId}:${repo.full_name}`;
@@ -102,10 +75,6 @@ export const graph = {
     return id;
   },
 
-  /**
-   * Add a directed edge "from follows to".
-   * No-op if from === to or edge already exists.
-   */
   addDirectedEdge(fromId, toId) {
     if (fromId === toId) return false;
     if (!this.nodes.has(fromId) || !this.nodes.has(toId)) return false;
@@ -116,7 +85,6 @@ export const graph = {
     return true;
   },
 
-  /** Remove a node + all its incident edges. */
   removeNode(id) {
     const node = this.nodes.get(id);
     if (!node) return false;
@@ -152,33 +120,18 @@ export const graph = {
     return true;
   },
 
-  /** Look up a node id by login. */
   idOf(login) { return this.loginMap.get(login); },
 
-  /** Look up a node by id. */
   nodeOf(id) { return this.nodes.get(id); },
 
-  /** Does `fromId` follow `toId`? */
   follows(fromId, toId) {
     return this.outgoing.get(fromId)?.has(toId) ?? false;
   },
 
-  /** Are these two nodes mutually following each other? */
   isMutual(aId, bId) {
     return this.follows(aId, bId) && this.follows(bId, aId);
   },
 
-  /**
-   * Yield deduplicated connection pairs.
-   * Each pair [a, b, type] is yielded once.
-   * type is one of:
-   *   'mutual'              (both directions)
-   *   'oneway'              (a → b only, where a < b by id)
-   *   'oneway-reverse'      (b → a only — same pair as 'oneway' but
-   *                          we tag the actual follower)
-   *
-   * For rendering we only need the unordered pair + the directionality.
-   */
   pairs() {
     const seen = new Set();
     const result = [];
@@ -201,21 +154,18 @@ export const graph = {
     return result;
   },
 
-  /** Total directed edge count (follows only, excludes repo edges). */
   edgeCount() {
     let n = 0;
     for (const outs of this.outgoing.values()) n += outs.size;
     return n;
   },
 
-  /** Repo-edge count (user → repo). */
   repoEdgeCount() {
     let n = 0;
     for (const repos of this.repoEdges.values()) n += repos.size;
     return n;
   },
 
-  /** Yield all repo edges as [userId, repoId] pairs. */
   repoPairs() {
     const result = [];
     for (const [userId, repos] of this.repoEdges) {
@@ -224,7 +174,6 @@ export const graph = {
     return result;
   },
 
-  /** Degree = number of distinct neighbors (in ∪ out, excludes repos). */
   degree(id) {
     const out = this.outgoing.get(id);
     const inc = this.incoming.get(id);
@@ -234,7 +183,6 @@ export const graph = {
     return s.size;
   },
 
-  /** How many of `id`'s connections are mutual? */
   mutualCount(id) {
     const out = this.outgoing.get(id);
     let n = 0;
@@ -244,7 +192,6 @@ export const graph = {
     return n;
   },
 
-  /** How many of `id`'s connections are one-way (id follows but not followed back, or vice versa)? */
   onewayCount(id) {
     const out = this.outgoing.get(id);
     const inc = this.incoming.get(id);
@@ -254,23 +201,19 @@ export const graph = {
     return n;
   },
 
-  /** Total distinct neighbors of `id`. */
   neighborCount(id) {
     return this.degree(id);
   },
 
-  /** Is `id` already expanded (we've fetched its followers/following)? */
   isExpanded(id) {
     return this.nodes.get(id)?.expanded ?? false;
   },
 
-  /** Mark a node as expanded. */
   markExpanded(id) {
     const n = this.nodes.get(id);
     if (n) n.expanded = true;
   },
 
-  /** Serialize for persistence. */
   toJSON() {
     return {
       version: 3,
@@ -283,7 +226,6 @@ export const graph = {
     };
   },
 
-  /** Hydrate from a previously serialized object. */
   fromJSON(data) {
     this.clear();
     if (!data || (data.version !== 2 && data.version !== 3)) return false;
