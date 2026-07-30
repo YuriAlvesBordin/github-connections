@@ -1,5 +1,5 @@
 /**
- * input.js — unified mouse / touch / keyboard interaction layer.
+ * input.js: unified mouse / touch / keyboard interaction layer.
  */
 
 import { CONFIG } from '../config.js';

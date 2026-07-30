@@ -1,5 +1,5 @@
 /**
- * toast.js — transient status messages.
+ * toast.js: transient status messages.
  */
 
 export const toast = {

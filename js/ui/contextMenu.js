@@ -1,5 +1,5 @@
 /**
- * contextMenu.js — right-click context menu for nodes.
+ * contextMenu.js: right-click context menu for nodes.
  */
 
 export class ContextMenu {

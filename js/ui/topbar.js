@@ -1,5 +1,5 @@
 /**
- * topbar.js — top toolbar with username input, load/clear/fit/reheat buttons.
+ * topbar.js: top toolbar with username input, load/clear/fit/reheat buttons.
  */
 
 export class Topbar {

@@ -1,5 +1,5 @@
 /**
- * infoPanel.js — right sidebar showing details for the hovered/selected node.
+ * infoPanel.js: right sidebar showing details for the hovered/selected node.
  */
 
 export class InfoPanel {

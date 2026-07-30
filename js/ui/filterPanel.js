@@ -1,5 +1,5 @@
 /**
- * filterPanel.js — filter panel for connection types and display options.
+ * filterPanel.js: filter panel for connection types and display options.
  */
 
 export class FilterPanel {
