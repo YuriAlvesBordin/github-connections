@@ -1,14 +1,14 @@
 /**
- * renderer.js — canvas renderer for the graph.
+ * renderer.js: canvas renderer for the graph.
  *
  * Draws:
- *   1. Edges (filtered by current mode) — straight with arrows on one-way
- *   2. Repo edges (user → repo) — dashed, gray, always visible
- *   3. Nodes — circular avatars (users) or smaller purple dots (repos)
- *   4. Labels — only when zoomed in or node is hovered/selected
+ *   1. Edges (filtered by current mode) - straight with arrows on one-way
+ *   2. Repo edges (user -> repo) - dashed, gray, always visible
+ *   3. Nodes - circular avatars (users) or smaller purple dots (repos)
+ *   4. Labels - only when zoomed in or node is hovered/selected
  *
  * Pop-in animation: each node has an `addedAt` timestamp. For the first
- * POP_DURATION ms after appearing, the node scales from 0 → 1 with a
+ * POP_DURATION ms after appearing, the node scales from 0 to 1 with a
  * slight overshoot (ease-out-back) and fades in opacity.
  *
  * Filter isolation: when filterMode is 'mutual' or 'oneway', only nodes

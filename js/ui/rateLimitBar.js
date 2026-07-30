@@ -1,5 +1,5 @@
 /**
- * rateLimitBar.js — tiny bar showing GitHub API rate limit remaining.
+ * rateLimitBar.js: tiny bar showing GitHub API rate limit remaining.
  */
 
 import { rateLimiter } from '../rateLimiter.js';
