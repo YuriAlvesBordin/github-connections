@@ -75,20 +75,28 @@ export async function loadAvatar(url) {
 }
 
 export function drawAvatar(ctx, url, cx, cy, radius) {
+  const entry = cache.get(url);
+  if (entry && entry.img.complete && entry.img.naturalWidth > 0) {
+    entry.lastUsed = Date.now();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.drawImage(entry.img, cx - radius, cy - radius, radius * 2, radius * 2);
+    ctx.restore();
+    return;
+  }
+
+  if (!loading.has(url) && !cache.has(url)) {
+    loadAvatar(url);
+  }
+
   ctx.save();
   ctx.beginPath();
   ctx.arc(cx, cy, radius, 0, Math.PI * 2);
   ctx.clip();
-
-  const entry = cache.get(url);
-  if (entry && entry.img.complete && entry.img.naturalWidth > 0) {
-    entry.lastUsed = Date.now();
-    ctx.drawImage(entry.img, cx - radius, cy - radius, radius * 2, radius * 2);
-  } else {
-    ctx.fillStyle = FALLBACK_COLOR;
-    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-  }
-
+  ctx.fillStyle = FALLBACK_COLOR;
+  ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
   ctx.restore();
 }
 
