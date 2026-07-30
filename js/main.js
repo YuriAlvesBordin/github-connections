@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 import { graph, addNode, addEdge } from './graph.js';
 import { render } from './render.js';
 import { fetchFollowers, fetchFollowing } from './api.js';
+import { applyPhysics } from './physics.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -82,6 +83,7 @@ usernameInput.addEventListener('input', () => {
 });
 
 function animate() {
+    applyPhysics();
     render(ctx);
     requestAnimationFrame(animate);
 }
