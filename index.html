@@ -30,15 +30,20 @@
       </button>
     </div>
     <div class="topbar-group">
+      <button id="btn-filter" class="btn btn-icon" type="button" title="connection filters" aria-label="connection filters">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 5h14M5 10h10M7 15h6"/>
+        </svg>
+      </button>
       <button id="btn-fit" class="btn btn-icon" type="button" title="fit to view (F)" aria-label="fit to view">
         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/>
         </svg>
       </button>
-      <button id="btn-shuffle" class="btn btn-icon" type="button" title="re-heat simulation" aria-label="reheat simulation">
+      <button id="btn-shuffle" class="btn btn-icon" type="button" title="regenerate layout" aria-label="regenerate layout">
         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 4l12 12M16 4L4 16"/>
-          <circle cx="10" cy="10" r="3"/>
+          <path d="M3 10a7 7 0 0 1 12-5M17 10a7 7 0 0 1-12 5"/>
+          <path d="M14 3v3h-3M6 17v-3h3"/>
         </svg>
       </button>
     </div>
@@ -64,43 +69,46 @@
       <div class="legend-item"><span class="legend-dot legend-oneway"></span>one-way follow</div>
       <div class="legend-item"><span class="legend-dot legend-repo"></span>top repos</div>
     </div>
-    <div class="filter-hint">tap = open · hold = expand · double-tap = repos</div>
-  </aside>
-
-  <aside id="info-panel" class="info-panel" aria-label="Selected node info">
-    <div class="info-header">
-      <img id="info-avatar" class="info-avatar" alt="" />
-      <div class="info-identity">
-        <h3 id="info-title">-</h3>
-        <a id="info-link" class="info-link" href="#" target="_blank" rel="noreferrer noopener">view on github ↗</a>
-      </div>
-    </div>
-    <div id="info-sub" class="info-sub">-</div>
-    <p id="info-desc" class="info-desc"></p>
-    <div class="info-stats">
-      <div class="info-stat">
-        <div class="info-stat-value" id="info-mutual">0</div>
-        <div class="info-stat-label">mutual</div>
-      </div>
-      <div class="info-stat">
-        <div class="info-stat-value" id="info-oneway">0</div>
-        <div class="info-stat-label">one-way</div>
-      </div>
-      <div class="info-stat">
-        <div class="info-stat-value" id="info-total">0</div>
-        <div class="info-stat-label">total</div>
-      </div>
-    </div>
-    <button id="btn-expand" class="btn btn-primary btn-block" type="button">expand connections</button>
-    <button id="btn-repos" class="btn btn-block" type="button">show top repos</button>
   </aside>
 
   <div id="ctx-menu" class="ctx-menu" role="menu">
+    <div class="ctx-item" id="ctx-info" role="menuitem">show info</div>
     <div class="ctx-item" id="ctx-expand" role="menuitem">expand connections</div>
-    <div class="ctx-item" id="ctx-focus" role="menuitem">focus & center</div>
-    <div class="ctx-item" id="ctx-open" role="menuitem">open on github ↗</div>
+    <div class="ctx-item" id="ctx-focus" role="menuitem">focus &amp; center</div>
+    <div class="ctx-item" id="ctx-open" role="menuitem">open on github</div>
     <div class="ctx-separator"></div>
     <div class="ctx-item danger" id="ctx-delete" role="menuitem">remove node</div>
+  </div>
+
+  <div id="modal-overlay" class="modal-overlay">
+    <div id="info-modal" class="info-modal" role="dialog" aria-label="Node details">
+      <button id="modal-close" class="modal-close" type="button" aria-label="close">&times;</button>
+      <div class="info-header">
+        <img id="info-avatar" class="info-avatar" alt="" />
+        <div class="info-identity">
+          <h3 id="info-title">-</h3>
+          <a id="info-link" class="info-link" href="#" target="_blank" rel="noreferrer noopener">view on github</a>
+        </div>
+      </div>
+      <div id="info-sub" class="info-sub">-</div>
+      <p id="info-desc" class="info-desc"></p>
+      <div class="info-stats">
+        <div class="info-stat">
+          <div class="info-stat-value" id="info-mutual">0</div>
+          <div class="info-stat-label">mutual</div>
+        </div>
+        <div class="info-stat">
+          <div class="info-stat-value" id="info-oneway">0</div>
+          <div class="info-stat-label">one-way</div>
+        </div>
+        <div class="info-stat">
+          <div class="info-stat-value" id="info-total">0</div>
+          <div class="info-stat-label">total</div>
+        </div>
+      </div>
+      <button id="btn-expand" class="btn btn-primary btn-block" type="button">expand connections</button>
+      <button id="btn-repos" class="btn btn-block" type="button">show top repos</button>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
