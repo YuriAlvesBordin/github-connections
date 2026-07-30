@@ -35,7 +35,7 @@
             color: #c9d1d9;
             font-size: 14px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         #username-input:focus {
             border-color: #58a6ff;
@@ -43,6 +43,10 @@
         #username-input.loading {
             border-color: #58a6ff;
             animation: pulse 1s infinite;
+        }
+        #username-input.error {
+            border-color: #f85149;
+            box-shadow: 0 0 0 1px #f85149;
         }
         @keyframes pulse {
             0%, 100% { opacity: 1; }
