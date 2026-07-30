@@ -176,6 +176,10 @@ export class Renderer {
     return bestNode;
   }
 
+  pick(screenX, screenY) {
+    return this.pickNode(screenX, screenY);
+  }
+
   bbox() {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     let any = false;

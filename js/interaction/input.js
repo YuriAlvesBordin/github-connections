@@ -60,11 +60,11 @@ export class InputController {
     this.movedExceeded = false;
     this.longPressFired = false;
 
-    const node = this.renderer.pickNode(x, y);
+    const node = this._pickNode(x, y);
 
     if (node && button === 0) {
       this.potentialNode = node;
-      const worldR = this.renderer._radius(node);
+      const worldR = this._nodeRadius(node);
       const screenR = worldR * this.camera.scale;
       this.moveThreshold = Math.max(screenR * GESTURE.MOVE_THRESHOLD, GESTURE.MOVE_MIN_PX);
 
@@ -108,7 +108,7 @@ export class InputController {
       this.camera.offsetX = this.panStartOffset.x + dx;
       this.camera.offsetY = this.panStartOffset.y + dy;
     } else {
-      const node = this.renderer.pickNode(x, y);
+      const node = this._pickNode(x, y);
       this.cb.onHover?.(node);
       this.canvas.style.cursor = node ? 'pointer' : 'grab';
     }
@@ -183,10 +183,21 @@ export class InputController {
 
   _onContextMenu(e) {
     e.preventDefault();
-    const node = this.renderer.pickNode(e.clientX, e.clientY);
+    const node = this._pickNode(e.clientX, e.clientY);
     if (node) {
       this.cb.onRightClick?.(node, e.clientX, e.clientY);
     }
+  }
+
+  _pickNode(x, y) {
+    if (typeof this.renderer?.pickNode === 'function') return this.renderer.pickNode(x, y);
+    if (typeof this.renderer?.pick === 'function') return this.renderer.pick(x, y);
+    return null;
+  }
+
+  _nodeRadius(node) {
+    if (typeof this.renderer?._radius === 'function') return this.renderer._radius(node);
+    return CONFIG.RENDER.BASE_NODE_RADIUS;
   }
 
   _onTouchStart(e) {
