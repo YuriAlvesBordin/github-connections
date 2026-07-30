@@ -123,6 +123,7 @@ html, body {
 /* Remove tap highlight on all interactive elements */
 a, button, [role="button"], input, label {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* ---------- Scrollbar ---------- */
