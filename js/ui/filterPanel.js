@@ -3,6 +3,7 @@ export class FilterPanel {
     this.onChange = onChange;
 
     this.root = document.getElementById('filter-panel');
+    this.title = this.root.querySelector('.filter-title');
     this.chips = {
       all: this.root.querySelector('[data-filter="all"]'),
       mutual: this.root.querySelector('[data-filter="mutual"]'),
@@ -13,9 +14,19 @@ export class FilterPanel {
 
     this._bind();
     this._state = { mode: 'all', showArrows: true, showLabels: true };
+
+    if (window.matchMedia('(max-width: 480px)').matches) {
+      this.root.classList.add('collapsed');
+    }
   }
 
   _bind() {
+    this.title.addEventListener('click', () => {
+      if (window.matchMedia('(max-width: 480px)').matches) {
+        this.root.classList.toggle('collapsed');
+      }
+    });
+
     for (const [mode, btn] of Object.entries(this.chips)) {
       btn.addEventListener('click', () => {
         this._state.mode = mode;
