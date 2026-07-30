@@ -1,8 +1,10 @@
 import { CONFIG } from './config.js';
-import { graph, addNode, addEdge } from './graph.js';
+import { graph, addNode, addEdge, getNodeAt } from './graph.js';
 import { render } from './render.js';
 import { fetchFollowers, fetchFollowing } from './api.js';
 import { applyPhysics } from './physics.js';
+import { createInteractionHandlers } from './interaction.js';
+import { showProfilePopup } from './popup.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -39,7 +41,12 @@ async function loadUser(username) {
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
 
-    addNode(username, centerX, centerY);
+    addNode(username, centerX, centerY, {
+        avatarUrl: `https://github.com/${username}.png`,
+        bio: '',
+        profileUrl: `https://github.com/${username}`,
+        name: username
+    });
 
     try {
         const [followers, following] = await Promise.all([
@@ -54,7 +61,12 @@ async function loadUser(username) {
             const angle = angleStepFollowers * index - Math.PI / 2;
             const x = centerX + 160 * Math.cos(angle);
             const y = centerY + 160 * Math.sin(angle);
-            addNode(follower.login, x, y);
+            addNode(follower.login, x, y, {
+                avatarUrl: follower.avatar_url,
+                bio: follower.bio || '',
+                profileUrl: follower.html_url,
+                name: follower.login
+            });
             addEdge(follower.login, username);
         });
 
@@ -62,7 +74,12 @@ async function loadUser(username) {
             const angle = angleStepFollowing * index + Math.PI / 2;
             const x = centerX + 160 * Math.cos(angle);
             const y = centerY + 160 * Math.sin(angle);
-            addNode(followed.login, x, y);
+            addNode(followed.login, x, y, {
+                avatarUrl: followed.avatar_url,
+                bio: followed.bio || '',
+                profileUrl: followed.html_url,
+                name: followed.login
+            });
             addEdge(username, followed.login);
         });
     } catch (err) {
@@ -93,6 +110,41 @@ usernameInput.addEventListener('input', () => {
         loadUser(value);
     }, 600);
 });
+
+const interaction = createInteractionHandlers({
+    onTap: event => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const node = getNodeAt(x, y);
+        if (node) {
+            showProfilePopup(node);
+        }
+    },
+    onLongPress: event => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const node = getNodeAt(x, y);
+        if (node) {
+            console.log('long press', node.id);
+        }
+    },
+    onDoubleTap: event => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const node = getNodeAt(x, y);
+        if (node) {
+            console.log('double tap', node.id);
+        }
+    }
+});
+
+canvas.addEventListener('pointerdown', interaction.onPointerDown);
+canvas.addEventListener('pointermove', interaction.onPointerMove);
+canvas.addEventListener('pointerup', interaction.onPointerUp);
+canvas.addEventListener('pointercancel', interaction.onPointerCancel);
 
 function animate() {
     applyPhysics();
