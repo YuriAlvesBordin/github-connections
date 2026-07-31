@@ -145,24 +145,27 @@ function regenerateLayout() {
 }
 
 async function loadUser(login) {
+  const existingId = graph.idOf(login);
+  if (existingId !== undefined) {
+    selectNode(graph.nodeOf(existingId));
+    const p = renderer.renderPos.get(existingId);
+    if (p) camera.centerOnSmooth(p.x, p.y);
+    toast.show(`@${login} already loaded`);
+    return;
+  }
   toast.show(`loading @${login}…`);
   try {
     const user = await GitHub.fetchUser(login);
-    const existing = graph.idOf(user.login);
     const now = Date.now();
     const id = graph.addUser(user, now);
-    if (existing === undefined) {
-      sim.add([graph.nodeOf(id)], []);
-    }
+    sim.add([graph.nodeOf(id)], []);
     refreshFilter();
     selectNode(graph.nodeOf(id));
     Storage.save(graph);
     toast.ok(`loaded @${login}`);
     const p = renderer.renderPos.get(id);
     if (p) camera.centerOn(p.x, p.y, renderer.W, renderer.H);
-    if (!user.expanded && !graph.isExpanded(id)) {
-      await onExpand(graph.nodeOf(id));
-    }
+    await onExpand(graph.nodeOf(id));
   } catch (e) {
     toast.err(`failed: ${e.message}`);
   }
