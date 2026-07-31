@@ -1,8 +1,9 @@
 export class InfoModal {
-  constructor({ graph, onExpand, onShowRepos }) {
+  constructor({ graph, onExpand, onShowRepos, onFetchUser }) {
     this.graph = graph;
     this.onExpand = onExpand;
     this.onShowRepos = onShowRepos;
+    this.onFetchUser = onFetchUser;
 
     this.overlay = document.getElementById('modal-overlay');
     this.avatar = document.getElementById('info-avatar');
@@ -43,6 +44,9 @@ export class InfoModal {
     if (!node) return;
     this._render(node);
     this.overlay.classList.add('visible');
+    if (node.type === 'user' && node.followers_count == null && this.onFetchUser) {
+      this.onFetchUser(node).then(() => this.refresh()).catch(() => {});
+    }
   }
 
   hide() {

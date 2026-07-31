@@ -21,7 +21,7 @@ const canvas = document.getElementById('canvas');
 const camera = new Camera();
 const sim = new SimulationClient();
 const renderer = new Renderer(canvas, graph, sim, camera);
-const infoModal = new InfoModal({ graph, onExpand, onShowRepos: showRepos });
+const infoModal = new InfoModal({ graph, onExpand, onShowRepos: showRepos, onFetchUser: fetchUserProfile });
 const contextMenu = new ContextMenu({
   onInfo: (node) => infoModal.show(node),
   onExpand,
@@ -144,6 +144,14 @@ function regenerateLayout() {
   toast.show('regenerating layout');
 }
 
+async function fetchUserProfile(node) {
+  try {
+    const user = await GitHub.fetchUser(node.login);
+    graph.addUser(user, node.addedAt);
+    Storage.save(graph);
+  } catch (e) {}
+}
+
 async function loadUser(login) {
   const existingId = graph.idOf(login);
   if (existingId !== undefined) {
@@ -173,10 +181,10 @@ async function loadUser(login) {
 
 async function onExpand(node) {
   if (!node || node.type !== 'user') return;
-  if (node.expanded) { toast.show('already expanded'); return; }
-  renderer.setLoading(node.id, true);
-  toast.show(`fetching @${node.login} connections…`);
   try {
+    if (node.expanded) { toast.show('already expanded'); return; }
+    renderer.setLoading(node.id, true);
+    toast.show(`fetching @${node.login} connections…`);
     const { followers, following } = await GitHub.fetchConnections(node.login);
     graph.markExpanded(node.id);
     const now = Date.now();
