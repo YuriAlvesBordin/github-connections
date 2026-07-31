@@ -51,7 +51,7 @@ export class Renderer {
     this.showArrows = true;
     this.showLabels = true;
 
-    this.loadingNodes = new Set();
+    this.loadingNodes = new Map();
 
     this.W = 0;
     this.H = 0;
@@ -160,8 +160,11 @@ export class Renderer {
   setHovered(node) { this.hovered = node; }
   setDragging(id) { this.draggingId = id; }
   setLoading(id, loading) {
-    if (loading) this.loadingNodes.add(id);
-    else this.loadingNodes.delete(id);
+    if (loading) {
+      if (!this.loadingNodes.has(id)) this.loadingNodes.set(id, Date.now());
+    } else {
+      this.loadingNodes.delete(id);
+    }
   }
 
   pickNode(screenX, screenY) {
@@ -360,22 +363,25 @@ export class Renderer {
       ctx.restore();
     }
 
-    for (const id of this.loadingNodes) {
+    for (const [id, startTime] of this.loadingNodes) {
       const p = this.renderPos.get(id);
       if (!p) continue;
       const node = this.graph.nodeOf(id);
       if (!node) continue;
       const r = this._radius(node);
-      this._drawSpinner(ctx, p, r, scale, now);
+      const fadeT = Math.min(1, (now - startTime) / 250);
+      const eased = fadeT * fadeT * (3 - 2 * fadeT);
+      this._drawSpinner(ctx, p, r, scale, now, eased);
     }
   }
 
-  _drawSpinner(ctx, p, r, scale, now) {
-    const spinnerR = r + 6 / scale;
+  _drawSpinner(ctx, p, r, scale, now, opacity) {
+    const spinnerR = (r + 6 / scale) * (0.8 + 0.2 * opacity);
     const angle = (now / 600) % (Math.PI * 2);
     const arcLen = Math.PI * 1.2;
 
     ctx.save();
+    ctx.globalAlpha = opacity;
     ctx.strokeStyle = PALETTE.selected;
     ctx.lineWidth = 2 / scale;
     ctx.lineCap = 'round';
@@ -383,7 +389,7 @@ export class Renderer {
     ctx.arc(p.x, p.y, spinnerR, angle, angle + arcLen);
     ctx.stroke();
 
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 0.3 * opacity;
     ctx.beginPath();
     ctx.arc(p.x, p.y, spinnerR, 0, Math.PI * 2);
     ctx.stroke();
