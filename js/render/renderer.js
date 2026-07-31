@@ -388,13 +388,6 @@ export class Renderer {
         ? PALETTE.hover
         : (isDrag ? this._labelHiColor : this._ringBase);
     ctx.stroke();
-
-    if (node.expanded) {
-      ctx.beginPath();
-      ctx.arc(p.x + r * 0.7, p.y - r * 0.7, 2.5 / scale, 0, Math.PI * 2);
-      ctx.fillStyle = PALETTE.mutual;
-      ctx.fill();
-    }
   }
 
   _drawRepoNode(ctx, node, p, r, scale) {
