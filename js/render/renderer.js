@@ -51,6 +51,8 @@ export class Renderer {
     this.showArrows = true;
     this.showLabels = true;
 
+    this.loadingNodes = new Set();
+
     this.W = 0;
     this.H = 0;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -157,6 +159,10 @@ export class Renderer {
   setSelected(node) { this.selected = node; }
   setHovered(node) { this.hovered = node; }
   setDragging(id) { this.draggingId = id; }
+  setLoading(id, loading) {
+    if (loading) this.loadingNodes.add(id);
+    else this.loadingNodes.delete(id);
+  }
 
   pickNode(screenX, screenY) {
     const world = this.camera.screenToWorld(screenX, screenY);
@@ -353,6 +359,35 @@ export class Renderer {
 
       ctx.restore();
     }
+
+    for (const id of this.loadingNodes) {
+      const p = this.renderPos.get(id);
+      if (!p) continue;
+      const node = this.graph.nodeOf(id);
+      if (!node) continue;
+      const r = this._radius(node);
+      this._drawSpinner(ctx, p, r, scale, now);
+    }
+  }
+
+  _drawSpinner(ctx, p, r, scale, now) {
+    const spinnerR = r + 6 / scale;
+    const angle = (now / 600) % (Math.PI * 2);
+    const arcLen = Math.PI * 1.2;
+
+    ctx.save();
+    ctx.strokeStyle = PALETTE.selected;
+    ctx.lineWidth = 2 / scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, spinnerR, angle, angle + arcLen);
+    ctx.stroke();
+
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, spinnerR, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   _drawUserNode(ctx, node, p, r, scale) {

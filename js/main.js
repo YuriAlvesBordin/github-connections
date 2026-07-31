@@ -51,7 +51,10 @@ const input = new InputController({
     onEndDragNode: (node) => { sim.unpin(node.id); },
     onQuickClick: (node) => {
       const url = node.html_url || (node.type === 'repo' ? `https://github.com/${node.full_name}` : `https://github.com/${node.login}`);
-      window.open(url, '_blank', 'noopener');
+      const label = node.type === 'repo' ? node.name : `@${node.login}`;
+      showConfirm(`Open ${label} on GitHub?`, () => {
+        window.open(url, '_blank', 'noopener');
+      });
     },
     onLongPress: (node) => {
       if (node.type === 'user') { selectNode(node); onExpand(node); }
@@ -68,6 +71,33 @@ const input = new InputController({
     onDeleteSelected: () => { if (selected) removeNode(selected); },
     onExpandSelected: () => { if (selected && selected.type === 'user') onExpand(selected); },
   },
+});
+
+const confirmOverlay = document.getElementById('confirm-overlay');
+const confirmText = document.getElementById('confirm-text');
+const confirmOk = document.getElementById('confirm-ok');
+const confirmCancel = document.getElementById('confirm-cancel');
+let confirmCallback = null;
+
+function showConfirm(text, onOk) {
+  confirmText.textContent = text;
+  confirmCallback = onOk;
+  confirmOverlay.classList.add('visible');
+}
+
+confirmOk.addEventListener('click', () => {
+  confirmOverlay.classList.remove('visible');
+  if (confirmCallback) { confirmCallback(); confirmCallback = null; }
+});
+confirmCancel.addEventListener('click', () => {
+  confirmOverlay.classList.remove('visible');
+  confirmCallback = null;
+});
+confirmOverlay.addEventListener('click', (e) => {
+  if (e.target === confirmOverlay) {
+    confirmOverlay.classList.remove('visible');
+    confirmCallback = null;
+  }
 });
 
 let selected = null;
@@ -128,7 +158,11 @@ async function loadUser(login) {
     selectNode(graph.nodeOf(id));
     Storage.save(graph);
     toast.ok(`loaded @${login}`);
-    setTimeout(fitToView, 200);
+    const p = renderer.renderPos.get(id);
+    if (p) camera.centerOn(p.x, p.y, renderer.W, renderer.H);
+    if (!user.expanded && !graph.isExpanded(id)) {
+      await onExpand(graph.nodeOf(id));
+    }
   } catch (e) {
     toast.err(`failed: ${e.message}`);
   }
@@ -137,6 +171,7 @@ async function loadUser(login) {
 async function onExpand(node) {
   if (!node || node.type !== 'user') return;
   if (node.expanded) { toast.show('already expanded'); return; }
+  renderer.setLoading(node.id, true);
   toast.show(`fetching @${node.login} connections…`);
   try {
     const { followers, following } = await GitHub.fetchConnections(node.login);
@@ -164,6 +199,8 @@ async function onExpand(node) {
     toast.ok(`+${followers.length + following.length} connections`);
   } catch (e) {
     toast.err(`expand failed: ${e.message}`);
+  } finally {
+    renderer.setLoading(node.id, false);
   }
 }
 
@@ -190,6 +227,7 @@ async function showRepos(node) {
   for (const [uid] of graph.repoEdges) {
     if (uid !== node.id) removeReposForUser(uid);
   }
+  renderer.setLoading(node.id, true);
   toast.show(`fetching @${node.login} top repos…`);
   try {
     const repos = await GitHub.fetchTopRepos(node.login, 3);
@@ -208,6 +246,8 @@ async function showRepos(node) {
     toast.ok(`+${repos.length} repos`);
   } catch (e) {
     toast.err(`repos failed: ${e.message}`);
+  } finally {
+    renderer.setLoading(node.id, false);
   }
 }
 
@@ -247,13 +287,6 @@ async function boot() {
     sim.init(renderer.W, renderer.H, [], []);
     topbar.setValue(BOOT_USER);
     await loadUser(BOOT_USER);
-    const rootId = graph.idOf(BOOT_USER);
-    if (rootId !== undefined) {
-      const root = graph.nodeOf(rootId);
-      if (root && !root.expanded) {
-        await onExpand(root);
-      }
-    }
     setTimeout(() => { fitToView(); }, 500);
   }
 }

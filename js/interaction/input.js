@@ -69,6 +69,10 @@ export class InputController {
         }
       }, GESTURE.LONG_PRESS_MS);
 
+      if (node.type === 'user') {
+        this.renderer.setLoading(node.id, true);
+      }
+
       if (event) event.preventDefault();
     } else if (button === 0 || button === 1 || (event && event.altKey)) {
       this.panning = true;
@@ -85,6 +89,9 @@ export class InputController {
       if (Math.hypot(dx, dy) > this.moveThreshold) {
         this.movedExceeded = true;
         clearTimeout(this._longPressTimer);
+        if (this.potentialNode && this.potentialNode.type === 'user') {
+          this.renderer.setLoading(this.potentialNode.id, false);
+        }
         this.draggingNode = this.potentialNode;
         this.renderer.setDragging(this.draggingNode.id);
         this.canvas.classList.add('dragging');
@@ -112,6 +119,10 @@ export class InputController {
     const wasDragging = this.draggingNode;
     const wasPotential = this.potentialNode;
     const wasPanning = this.panning;
+
+    if (wasPotential && wasPotential.type === 'user' && !this.longPressFired) {
+      this.renderer.setLoading(wasPotential.id, false);
+    }
 
     if (wasDragging) {
       this.cb.onEndDragNode?.(wasDragging);

@@ -89,6 +89,16 @@
     </div>
   </div>
 
+  <div id="confirm-overlay" class="modal-overlay">
+    <div id="confirm-dialog" class="info-modal" role="dialog" aria-label="confirm" style="width:300px;padding:24px;">
+      <p id="confirm-text" class="info-desc" style="margin-bottom:20px;"></p>
+      <div style="display:flex;gap:8px;">
+        <button id="confirm-cancel" class="btn btn-block" type="button" style="margin-bottom:0;">cancel</button>
+        <button id="confirm-ok" class="btn btn-primary btn-block" type="button" style="margin-bottom:0;">open</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <div id="rate-limit-bar"></div>
 
