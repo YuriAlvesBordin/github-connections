@@ -179,14 +179,28 @@ async function loadUser(login) {
   }
 }
 
+/** Returns true when all known connections have already been loaded. */
+function isFullyExpanded(node) {
+  if (!node.expandedCount) return false;
+  const total = (node.followers_count || 0) + (node.following_count || 0);
+  // If the API counts are unknown (0/undefined) but we did expand once, treat as full.
+  if (total === 0) return true;
+  return node.expandedCount >= total;
+}
+
 async function onExpand(node) {
   if (!node || node.type !== 'user') return;
   try {
-    if (node.expanded) { toast.show('already expanded'); return; }
+    if (isFullyExpanded(node)) {
+      toast.show('all connections already loaded');
+      return;
+    }
     renderer.setLoading(node.id, true);
-    toast.show(`fetching @${node.login} connections…`);
+    const isReExpand = (node.expandedCount || 0) > 0;
+    toast.show(isReExpand
+      ? `refreshing @${node.login} connections…`
+      : `fetching @${node.login} connections…`);
     const { followers, following } = await GitHub.fetchConnections(node.login);
-    graph.markExpanded(node.id);
     const now = Date.now();
     let si = 0;
     const newNodeIds = [], newSimEdges = [];
@@ -202,12 +216,18 @@ async function onExpand(node) {
       if (isNew) { newNodeIds.push(tid); si++; }
       if (graph.addDirectedEdge(node.id, tid)) newSimEdges.push([node.id, tid]);
     }
+    const loadedCount = followers.length + following.length;
+    graph.markExpanded(node.id, loadedCount);
     sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
     refreshFilter();
     sim.reheat(0.4);
     infoModal.refresh();
     Storage.save(graph);
-    toast.ok(`+${followers.length + following.length} connections`);
+    const total = (node.followers_count || 0) + (node.following_count || 0);
+    const partial = total > 0 && loadedCount < total;
+    toast.ok(partial
+      ? `+${loadedCount} connections (partial — expand again for more)`
+      : `+${loadedCount} connections`);
   } catch (e) {
     toast.err(`expand failed: ${e.message}`);
   } finally {
