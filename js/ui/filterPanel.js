@@ -2,7 +2,7 @@ export class FilterPanel {
   constructor({ onChange }) {
     this.onChange = onChange;
     this.btn = document.getElementById('btn-filter');
-    this.modes = ['all', 'mutual'];
+    this.modes = ['all', 'mutual', 'oneway'];
     this.labels = { all: 'all', mutual: 'mutual' };
     this.idx = 0;
 

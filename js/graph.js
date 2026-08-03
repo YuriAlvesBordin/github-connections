@@ -122,9 +122,47 @@ export class Graph {
     for (const [a, nbrs] of this.edges) {
       for (const b of nbrs) {
         const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-        if (!seen.has(key)) { seen.add(key); yield [a, b]; }
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const aToB = this.directed.get(a)?.has(b) ?? false;
+        const bToA = this.directed.get(b)?.has(a) ?? false;
+        const type = (aToB && bToA) ? 'mutual'
+                   : aToB ? 'oneway'
+                   : bToA ? 'oneway-reverse'
+                   : 'oneway';
+        yield [a, b, type];
       }
     }
+  }
+
+  follows(from, to) {
+    return this.directed.get(from)?.has(to) ?? false;
+  }
+
+  mutualCount(id) {
+    const out = this.directed.get(id);
+    if (!out) return 0;
+    let n = 0;
+    for (const other of out) {
+      if (this.directed.get(other)?.has(id)) n++;
+    }
+    return n;
+  }
+
+  onewayCount(id) {
+    const out = this.directed.get(id) || new Set();
+    const inc = new Set();
+    for (const [from, tos] of this.directed) {
+      if (tos.has(id)) inc.add(from);
+    }
+    let n = 0;
+    for (const other of out) if (!this.directed.get(other)?.has(id)) n++;
+    for (const other of inc) if (!out.has(other)) n++;
+    return n;
+  }
+
+  neighborCount(id) {
+    return this.edges.get(id)?.size ?? 0;
   }
 
   *repoPairs() {

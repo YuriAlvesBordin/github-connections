@@ -56,7 +56,7 @@ export class InfoModal {
   _render(node) {
     const isRepo = node.type === 'repo';
 
-    this.avatar.src = isRepo ? '' : (node.avatar || '');
+    this.avatar.src = isRepo ? '' : (node.avatar_url || '');
     this.avatar.alt = isRepo ? '' : node.login;
     this.avatar.style.display = isRepo ? 'none' : 'block';
 
@@ -64,11 +64,11 @@ export class InfoModal {
     this.link.href = node.html_url || '#';
 
     if (isRepo) {
-      this.sub.textContent = `${node.stars || 0} stars${node.language ? ' · ' + node.language : ''}`;
+      this.sub.textContent = `${node.stargazers_count || 0} stars${node.language ? ' · ' + node.language : ''}`;
       this.desc.textContent = node.description || 'No description provided.';
       this.mutual.textContent = '-';
       this.oneway.textContent = '-';
-      this.total.textContent = node.stars || 0;
+      this.total.textContent = node.stargazers_count || 0;
     } else {
       this.sub.textContent = `${node.followers_count ?? '?'} followers · ${node.following_count ?? '?'} following`;
       this.desc.textContent = node.bio || 'No bio available.';
