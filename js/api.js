@@ -3,7 +3,7 @@ import { rateLimiter } from './rateLimiter.js';
 
 function authHeaders() {
   const token = window.__ghToken;
-  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function ghGet(path) {
@@ -12,20 +12,20 @@ async function ghGet(path) {
   return text ? JSON.parse(text) : null;
 }
 
-async function ghGetAll(path, maxNodes = CONFIG.MAX_PER_EXPAND) {
+/** Fetch all pages of a list endpoint, pausing automatically via the rate limiter. */
+async function ghGetAll(path) {
   const results = [];
   let page = 1;
-  const perPage = Math.min(100, maxNodes);
 
-  while (results.length < maxNodes) {
-    const batch = await ghGet(`${path}?per_page=${perPage}&page=${page}`);
+  while (true) {
+    const batch = await ghGet(`${path}?per_page=100&page=${page}`);
     if (!batch || batch.length === 0) break;
     results.push(...batch);
-    if (batch.length < perPage) break;
+    if (batch.length < 100) break;
     page++;
   }
 
-  return results.slice(0, maxNodes);
+  return results;
 }
 
 export const GitHub = {
@@ -33,10 +33,10 @@ export const GitHub = {
     return ghGet(`/users/${encodeURIComponent(login)}`);
   },
 
-  async fetchConnections(login, maxNodes = CONFIG.MAX_PER_EXPAND) {
+  async fetchConnections(login) {
     const [followers, following] = await Promise.all([
-      ghGetAll(`/users/${encodeURIComponent(login)}/followers`, maxNodes),
-      ghGetAll(`/users/${encodeURIComponent(login)}/following`, maxNodes),
+      ghGetAll(`/users/${encodeURIComponent(login)}/followers`),
+      ghGetAll(`/users/${encodeURIComponent(login)}/following`),
     ]);
     return { followers, following };
   },
