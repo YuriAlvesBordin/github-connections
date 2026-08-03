@@ -343,7 +343,7 @@ export class Renderer {
 
       const dur = node.type === 'repo' ? POP_DURATION_REPO : POP_DURATION;
       const age = now - (node.addedAt ?? now);
-      if (age < 0) continue; // staggered - not yet appeared
+      if (age < 0) continue;
       const popT = clamp(age / dur, 0, 1);
       const popS = popScale(popT);
       if (popS <= 0) continue;
@@ -414,8 +414,8 @@ export class Renderer {
     ctx.fillStyle = this._fallbackColor;
     ctx.fill();
 
-    if (node.avatar) {
-      avatarCache.drawAvatar(ctx, node.avatar, p.x, p.y, r);
+    if (node.avatar_url) {
+      avatarCache.drawAvatar(ctx, node.avatar_url, p.x, p.y, r);
     } else {
       this._drawInitials(ctx, node, p, r);
     }
