@@ -1,0 +1,23 @@
+{
+  "name": "GitHub Connections Graph",
+  "short_name": "GitHub Graph",
+  "description": "Interactive graph of GitHub user connections",
+  "start_url": "../",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#58a6ff",
+  "icons": [
+    {
+      "src": "./favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
