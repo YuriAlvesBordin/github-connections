@@ -318,12 +318,17 @@ async function boot() {
     sim.init(renderer.W, renderer.H, Array.from(graph.nodes.values()), allEdges);
     refreshFilter();
     toast.show(`restored ${graph.nodes.size} nodes`);
-    // Wait for the first positions tick from the worker before fitting,
-    // so renderPos is populated and bbox() returns a valid bounding box.
+    // Wait for the worker to emit its first positions message, then wait two
+    // rAF cycles so the renderer's _updatePositions() has run and renderPos
+    // is fully populated before fitToView reads bbox().
     const unsub = sim.on((evt) => {
       if (evt.type === 'tick') {
         unsub();
-        fitToView();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            fitToView();
+          });
+        });
       }
     });
   } else {
