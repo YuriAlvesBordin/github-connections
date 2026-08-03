@@ -3,7 +3,7 @@ import { rateLimiter } from './rateLimiter.js';
 
 function authHeaders() {
   const token = window.__ghToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 }
 
 async function ghGet(path) {
@@ -12,20 +12,16 @@ async function ghGet(path) {
   return text ? JSON.parse(text) : null;
 }
 
-/** Fetch all pages of a list endpoint, pausing automatically via the rate limiter. */
-async function ghGetAll(path) {
-  const results = [];
+/** Yields each page as it arrives — callers render immediately without waiting for all pages. */
+async function* ghGetPages(path) {
   let page = 1;
-
   while (true) {
     const batch = await ghGet(`${path}?per_page=100&page=${page}`);
     if (!batch || batch.length === 0) break;
-    results.push(...batch);
+    yield batch;
     if (batch.length < 100) break;
     page++;
   }
-
-  return results;
 }
 
 export const GitHub = {
@@ -33,12 +29,12 @@ export const GitHub = {
     return ghGet(`/users/${encodeURIComponent(login)}`);
   },
 
-  async fetchConnections(login) {
-    const [followers, following] = await Promise.all([
-      ghGetAll(`/users/${encodeURIComponent(login)}/followers`),
-      ghGetAll(`/users/${encodeURIComponent(login)}/following`),
-    ]);
-    return { followers, following };
+  /** Streams followers then following page-by-page. onBatch(items, type) called per page. */
+  async fetchConnections(login, onBatch) {
+    for await (const batch of ghGetPages(`/users/${encodeURIComponent(login)}/followers`))
+      await onBatch(batch, 'follower');
+    for await (const batch of ghGetPages(`/users/${encodeURIComponent(login)}/following`))
+      await onBatch(batch, 'following');
   },
 
   async fetchTopRepos(login, count = 3) {
