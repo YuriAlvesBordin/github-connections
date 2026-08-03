@@ -3,7 +3,7 @@ import { rateLimiter } from './rateLimiter.js';
 
 function authHeaders() {
   const token = window.__ghToken;
-  return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function ghGet(path) {
