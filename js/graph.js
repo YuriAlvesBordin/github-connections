@@ -13,6 +13,7 @@ export class Graph {
 
   idOf(login) { return this.loginMap.get(login.toLowerCase()); }
   nodeOf(id)  { return this.nodes.get(id); }
+  degree(id)  { return this.edges.get(id)?.size ?? 0; }
 
   addUser(data, addedAt = Date.now()) {
     const login = data.login.toLowerCase();
