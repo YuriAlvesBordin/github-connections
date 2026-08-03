@@ -1,8 +1,6 @@
 export const CONFIG = {
   API_BASE: 'https://api.github.com',
 
-  MAX_PER_EXPAND: 30,
-
   DEFAULT_RATE_LIMIT: 60,
 
   PHYSICS: {
