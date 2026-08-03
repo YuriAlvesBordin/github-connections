@@ -40,11 +40,11 @@ export class TokenModal {
 
   _refresh() {
     if (window.__ghToken) {
-      this._status.textContent = 'Token active — higher rate limits enabled.';
+      this._status.textContent = 'Token active - higher rate limits enabled.';
       this._status.className = 'token-status ok';
       this._clear.style.display = 'inline-flex';
     } else {
-      this._status.textContent = 'No token set — limited to 60 requests/hour.';
+      this._status.textContent = 'No token set - limited to 60 requests/hour.';
       this._status.className = 'token-status';
       this._clear.style.display = 'none';
     }

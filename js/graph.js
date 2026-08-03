@@ -1,11 +1,11 @@
-// graph.js — node/edge store
+// graph.js - node/edge store
 export class Graph {
   constructor() {
-    this.nodes     = new Map();  // id → node
-    this.loginMap  = new Map();  // login → id
-    this.edges     = new Map();  // id → Set<id>  (undirected adjacency)
-    this.directed  = new Map();  // followerId → Set<followingId>
-    this.repoEdges = new Map();  // userId → Set<repoId>
+    this.nodes     = new Map();  // id -> node
+    this.loginMap  = new Map();  // login -> id
+    this.edges     = new Map();  // id -> Set<id>  (undirected adjacency)
+    this.directed  = new Map();  // followerId -> Set<followingId>
+    this.repoEdges = new Map();  // userId -> Set<repoId>
     this._nextId   = 1;
   }
 

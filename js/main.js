@@ -161,7 +161,7 @@ async function loadUser(login) {
     toast.show(`@${login} already loaded`);
     return;
   }
-  toast.show(`loading @${login}…`);
+  toast.show(`loading @${login}...`);
   try {
     const user = await GitHub.fetchUser(login);
     const now = Date.now();
@@ -198,8 +198,8 @@ async function onExpand(node) {
     renderer.setLoading(node.id, true);
     const isReExpand = (node.expandedCount || 0) > 0;
     toast.show(isReExpand
-      ? `refreshing @${node.login} connections…`
-      : `fetching @${node.login} connections…`);
+      ? `refreshing @${node.login} connections...`
+      : `fetching @${node.login} connections...`);
     const { followers, following } = await GitHub.fetchConnections(node.login);
     const now = Date.now();
     let si = 0;
@@ -226,7 +226,7 @@ async function onExpand(node) {
     const total = (node.followers_count || 0) + (node.following_count || 0);
     const partial = total > 0 && loadedCount < total;
     toast.ok(partial
-      ? `+${loadedCount} connections (partial — expand again for more)`
+      ? `+${loadedCount} connections (partial - expand again for more)`
       : `+${loadedCount} connections`);
   } catch (e) {
     toast.err(`expand failed: ${e.message}`);
@@ -259,7 +259,7 @@ async function showRepos(node) {
     if (uid !== node.id) removeReposForUser(uid);
   }
   renderer.setLoading(node.id, true);
-  toast.show(`fetching @${node.login} top repos…`);
+  toast.show(`fetching @${node.login} top repos...`);
   try {
     const repos = await GitHub.fetchTopRepos(node.login, 3);
     if (repos.length === 0) { toast.show('no public repos'); return; }

@@ -1,10 +1,10 @@
 /* =============================================================
-   main.css — Apple-inspired design tokens, base styles, canvas
+   main.css - Apple-inspired design tokens, base styles, canvas
    ============================================================= */
 
 /* ---------- Design Tokens ---------- */
 :root {
-  /* Colors — Light mode (default) */
+  /* Colors - Light mode (default) */
   --bg:        #ffffff;
   --fg:        #1d1d1f;
   --muted:     #6e6e73;
