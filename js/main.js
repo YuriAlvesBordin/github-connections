@@ -183,7 +183,6 @@ async function loadUser(login) {
 function isFullyExpanded(node) {
   if (!node.expandedCount) return false;
   const total = (node.followers_count || 0) + (node.following_count || 0);
-  // If the API counts are unknown (0/undefined) but we did expand once, treat as full.
   if (total === 0) return true;
   return node.expandedCount >= total;
 }
@@ -200,28 +199,34 @@ async function onExpand(node) {
     toast.show(isReExpand
       ? `refreshing @${node.login} connections...`
       : `fetching @${node.login} connections...`);
-    const { followers, following } = await GitHub.fetchConnections(node.login);
-    const now = Date.now();
+
     let si = 0;
-    const newNodeIds = [], newSimEdges = [];
-    for (const u of followers) {
-      const isNew = !graph.loginMap.has(u.login);
-      const tid = graph.addUser(u, now + si * STAGGER_MS);
-      if (isNew) { newNodeIds.push(tid); si++; }
-      if (graph.addDirectedEdge(tid, node.id)) newSimEdges.push([tid, node.id]);
-    }
-    for (const u of following) {
-      const isNew = !graph.loginMap.has(u.login);
-      const tid = graph.addUser(u, now + si * STAGGER_MS);
-      if (isNew) { newNodeIds.push(tid); si++; }
-      if (graph.addDirectedEdge(node.id, tid)) newSimEdges.push([node.id, tid]);
-    }
-    const loadedCount = followers.length + following.length;
+    let loadedCount = 0;
+
+    await GitHub.fetchConnections(node.login, async (batch, type) => {
+      const now = Date.now();
+      const newNodeIds = [], newSimEdges = [];
+      for (const u of batch) {
+        const isNew = !graph.loginMap.has(u.login.toLowerCase());
+        const tid = graph.addUser(u, now + si * STAGGER_MS);
+        if (isNew) { newNodeIds.push(tid); si++; }
+        if (type === 'follower') {
+          if (graph.addDirectedEdge(tid, node.id)) newSimEdges.push([tid, node.id]);
+        } else {
+          if (graph.addDirectedEdge(node.id, tid)) newSimEdges.push([node.id, tid]);
+        }
+      }
+      loadedCount += batch.length;
+      if (newNodeIds.length > 0 || newSimEdges.length > 0) {
+        sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
+        refreshFilter();
+        sim.reheat(0.3);
+        infoModal.refresh();
+        toast.show(`@${node.login}: ${loadedCount} connections so far...`);
+      }
+    });
+
     graph.markExpanded(node.id, loadedCount);
-    sim.add(newNodeIds.map((id) => graph.nodeOf(id)), newSimEdges);
-    refreshFilter();
-    sim.reheat(0.4);
-    infoModal.refresh();
     Storage.save(graph);
     const total = (node.followers_count || 0) + (node.following_count || 0);
     const partial = total > 0 && loadedCount < total;
