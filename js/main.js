@@ -318,7 +318,14 @@ async function boot() {
     sim.init(renderer.W, renderer.H, Array.from(graph.nodes.values()), allEdges);
     refreshFilter();
     toast.show(`restored ${graph.nodes.size} nodes`);
-    setTimeout(() => { fitToView(); }, 500);
+    // Wait for the first positions tick from the worker before fitting,
+    // so renderPos is populated and bbox() returns a valid bounding box.
+    const unsub = sim.on((evt) => {
+      if (evt.type === 'tick') {
+        unsub();
+        fitToView();
+      }
+    });
   } else {
     sim.init(renderer.W, renderer.H, [], []);
     topbar.setValue(BOOT_USER);
