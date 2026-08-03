@@ -47,6 +47,12 @@
           <path d="M14 3v3h-3M6 17v-3h3"/>
         </svg>
       </button>
+      <button id="btn-token" class="btn btn-icon" type="button" title="github token" aria-label="configure github token">
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="10" cy="10" r="2.5"/>
+          <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -97,6 +103,43 @@
         <button id="confirm-cancel" class="btn btn-block" type="button" style="margin-bottom:0;">cancel</button>
         <button id="confirm-ok" class="btn btn-primary btn-block" type="button" style="margin-bottom:0;">open</button>
       </div>
+    </div>
+  </div>
+
+  <div id="token-overlay" class="modal-overlay">
+    <div class="info-modal token-modal" role="dialog" aria-labelledby="token-modal-title">
+      <button class="modal-close" type="button" aria-label="close"
+        onclick="document.getElementById('token-overlay').classList.remove('visible')">&times;</button>
+
+      <h3 id="token-modal-title" class="info-title" style="margin-bottom:6px;">GitHub Token</h3>
+      <p class="info-desc" style="margin-bottom:16px;">
+        Without a token, the GitHub API allows <strong>60 requests/hour</strong>. With a personal access
+        token you get <strong>5,000 requests/hour</strong>, which lets you explore much larger graphs.
+      </p>
+
+      <div class="token-steps">
+        <p class="token-step"><span class="token-step-n">1</span> Go to <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer noopener">github.com/settings/tokens</a></p>
+        <p class="token-step"><span class="token-step-n">2</span> Click <strong>Generate new token (classic)</strong></p>
+        <p class="token-step"><span class="token-step-n">3</span> Give it a name, no scopes needed for public data</p>
+        <p class="token-step"><span class="token-step-n">4</span> Copy the token and paste it below</p>
+      </div>
+
+      <div class="token-privacy">
+        <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink:0;margin-top:1px;">
+          <rect x="4" y="9" width="12" height="9" rx="2"/><path d="M7 9V6a3 3 0 0 1 6 0v3"/>
+        </svg>
+        Your token is stored only in this browser tab's memory and is never sent anywhere except directly to the GitHub API. It is cleared when you close the tab.
+      </div>
+
+      <input id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+        autocomplete="off" spellcheck="false" style="margin-bottom:10px;" />
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button id="token-save" class="btn btn-primary btn-block" type="button" style="margin-bottom:0;">save token</button>
+        <button id="token-clear" class="btn btn-block" type="button" style="margin-bottom:0;display:none;">clear</button>
+      </div>
+
+      <div id="token-status" class="token-status"></div>
     </div>
   </div>
 
