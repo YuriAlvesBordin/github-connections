@@ -16,6 +16,18 @@ const PHYSICS = {
   SLEEP_FRAMES:     60,
 };
 
+// ---------------------------------------------------------------------------
+// LOD thresholds — below MEDIUM_THRESHOLD all nodes are processed every frame;
+// above it, only a rotating slice of LOD_SLICE_SIZE nodes receives force
+// updates per frame (the rest keep coasting on residual velocity).
+// Cross-edge untangling is disabled above CROSS_EDGE_THRESHOLD (already was
+// gated at 600 edges; we keep that logic intact but also gate on node count).
+// ---------------------------------------------------------------------------
+const MEDIUM_THRESHOLD   = 300;  // node count above which degree cache is used
+const LOW_THRESHOLD      = 800;  // node count above which slice stepping kicks in
+const LOD_SLICE_SIZE     = 400;  // nodes processed per frame in LOW mode
+const CROSS_EDGE_THRESHOLD = 600; // existing threshold kept as-is
+
 let nodes = [];
 let edges = [];
 let sim   = {};
@@ -24,6 +36,16 @@ let temperature = PHYSICS.INITIAL_TEMP;
 let sleeping = false;
 let sleepFrames = 0;
 let activeIds = null;
+
+// --- degree cache (invalidated whenever edges change) ---
+let _degreesDirty = true;
+let _degreesCache = new Map();
+
+// --- edge lookup set for O(1) dedup (key: "minId_maxId") ---
+let _edgeSet = new Set();
+
+// --- slice stepping state ---
+let _sliceIndex = 0;
 
 class Quad {
   constructor(x, y, w, h) {
@@ -121,13 +143,25 @@ function buildQuadtree() {
   return root;
 }
 
+// Returns cached degrees map; only recomputes when _degreesDirty is true.
 function computeDegrees() {
-  const deg = new Map();
+  if (!_degreesDirty) return _degreesCache;
+  _degreesCache = new Map();
   for (const edge of edges) {
-    deg.set(edge[0], (deg.get(edge[0]) || 0) + 1);
-    deg.set(edge[1], (deg.get(edge[1]) || 0) + 1);
+    _degreesCache.set(edge[0], (_degreesCache.get(edge[0]) || 0) + 1);
+    _degreesCache.set(edge[1], (_degreesCache.get(edge[1]) || 0) + 1);
   }
-  return deg;
+  _degreesDirty = false;
+  return _degreesCache;
+}
+
+// Rebuild the O(1) edge lookup set from the current edges array.
+function rebuildEdgeSet() {
+  _edgeSet = new Set();
+  for (const e of edges) {
+    const a = e[0], b = e[1];
+    _edgeSet.add(`${Math.min(a, b)}_${Math.max(a, b)}`);
+  }
 }
 
 function segmentsCross(p1, p2, p3, p4) {
@@ -144,20 +178,45 @@ function segmentsCross(p1, p2, p3, p4) {
 function step() {
   if (sleeping) return;
 
+  // ---- Determine LOD level based on total node count ----
+  const totalActive = nodes.filter((n) => isActive(n.id));
+  const useLOD = totalActive.length > LOW_THRESHOLD;
+
+  // In LOW mode, pick a rotating slice; otherwise process all active nodes.
+  let activeNodes;
+  if (useLOD) {
+    const total = totalActive.length;
+    const start = (_sliceIndex * LOD_SLICE_SIZE) % total;
+    const end   = start + LOD_SLICE_SIZE;
+    if (end <= total) {
+      activeNodes = totalActive.slice(start, end);
+    } else {
+      // wrap around
+      activeNodes = totalActive.slice(start).concat(totalActive.slice(0, end - total));
+    }
+    _sliceIndex++;
+  } else {
+    activeNodes = totalActive;
+    _sliceIndex = 0;
+  }
+
   const forces = new Map();
-  const activeNodes = nodes.filter((n) => isActive(n.id));
   for (const n of activeNodes) forces.set(n.id, { x: 0, y: 0 });
 
+  // Degree cache: always used in LOW mode; in MEDIUM/FULL recomputed when dirty.
   const degrees = computeDegrees();
+
+  // Update mass only for nodes in this frame's slice.
   for (const n of activeNodes) {
     const s = sim[n.id];
     if (!s) continue;
     s.mass = 1 + (degrees.get(n.id) || 0) * 0.4;
   }
 
+  // Quadtree still uses ALL active nodes for correct global repulsion.
   const root = buildQuadtree();
 
-  const gravityScale = Math.min(1, 25 / Math.max(25, activeNodes.length));
+  const gravityScale = Math.min(1, 25 / Math.max(25, totalActive.length));
   const effectiveGravity = PHYSICS.CENTER_GRAVITY * gravityScale;
 
   for (const n of activeNodes) {
@@ -172,9 +231,14 @@ function step() {
     f.y += (H / 2 - s.y) * effectiveGravity;
   }
 
+  // Spring + collision forces — only for edges where at least one endpoint is
+  // in the current slice (so all edges still contribute over time).
+  const sliceSet = new Set(activeNodes.map((n) => n.id));
   for (const edge of edges) {
     const a = edge[0], b = edge[1];
     if (!isActive(a) || !isActive(b)) continue;
+    // Skip edge entirely if neither endpoint is in this frame's slice.
+    if (useLOD && !sliceSet.has(a) && !sliceSet.has(b)) continue;
     const sa = sim[a], sb = sim[b];
     if (!sa || !sb) continue;
     const degA = degrees.get(a) || 0;
@@ -186,24 +250,22 @@ function step() {
     const d  = Math.sqrt(dx * dx + dy * dy) || 1;
     const f  = PHYSICS.EDGE_SPRING_K * (d - restLen);
     const fxx = (dx / d) * f, fyy = (dy / d) * f;
-    forces.get(a).x += fxx;
-    forces.get(a).y += fyy;
-    forces.get(b).x -= fxx;
-    forces.get(b).y -= fyy;
+    // Only write forces for nodes actually in the forces map (slice).
+    if (forces.has(a)) { forces.get(a).x += fxx; forces.get(a).y += fyy; }
+    if (forces.has(b)) { forces.get(b).x -= fxx; forces.get(b).y -= fyy; }
 
     const minDist = 30 + (sa.mass + sb.mass) * 2;
     if (d < minDist) {
       const overlap = minDist - d;
       const ox = (dx / d) * overlap * PHYSICS.COLLISION_K;
       const oy = (dy / d) * overlap * PHYSICS.COLLISION_K;
-      forces.get(a).x -= ox;
-      forces.get(a).y -= oy;
-      forces.get(b).x += ox;
-      forces.get(b).y += oy;
+      if (forces.has(a)) { forces.get(a).x -= ox; forces.get(a).y -= oy; }
+      if (forces.has(b)) { forces.get(b).x += ox; forces.get(b).y += oy; }
     }
   }
 
-  if (edges.length < 600) {
+  // Cross-edge untangling: only when graph is small enough (unchanged logic).
+  if (!useLOD && edges.length < CROSS_EDGE_THRESHOLD) {
     for (let i = 0; i < edges.length; i++) {
       const a1 = edges[i][0], b1 = edges[i][1];
       if (!isActive(a1) || !isActive(b1)) continue;
@@ -265,6 +327,8 @@ function step() {
     if (v > maxV) maxV = v;
   }
 
+  // In LOW mode we only measure sleep on the processed slice, so use
+  // totalActive.length as denominator to avoid premature sleeping.
   temperature *= PHYSICS.COOLING;
   if (temperature < PHYSICS.MIN_TEMP) temperature = PHYSICS.MIN_TEMP;
 
@@ -305,6 +369,9 @@ self.onmessage = (e) => {
       nodes = data.nodes.map((n) => ({ id: n.id, mass: n.mass || 1 }));
       edges = data.edges.map((e) => e.length > 2 ? [e[0], e[1], e[2]] : [e[0], e[1]]);
       sim = {};
+      _sliceIndex = 0;
+      _degreesDirty = true;
+      rebuildEdgeSet();
       nodes.forEach((n, i) => {
         if (!sim[n.id]) {
           const p = spawnPosition(n.id, i, nodes.length);
@@ -327,10 +394,13 @@ self.onmessage = (e) => {
       }
       for (const e of data.edges) {
         const a = e[0], b = e[1];
-        if (!edges.some((ed) => (ed[0] === a && ed[1] === b) || (ed[0] === b && ed[1] === a))) {
+        const key = `${Math.min(a, b)}_${Math.max(a, b)}`;
+        if (!_edgeSet.has(key)) {
+          _edgeSet.add(key);
           edges.push(e.length > 2 ? [a, b, e[2]] : [a, b]);
         }
       }
+      _degreesDirty = true;
       wake(0.3);
       postMessage({ type: 'added' });
       break;
@@ -340,6 +410,8 @@ self.onmessage = (e) => {
       nodes = nodes.filter((n) => n.id !== data.id);
       edges = edges.filter(([a, b]) => a !== data.id && b !== data.id);
       delete sim[data.id];
+      _degreesDirty = true;
+      rebuildEdgeSet();
       wake(0.2);
       postMessage({ type: 'removed' });
       break;
@@ -380,6 +452,10 @@ self.onmessage = (e) => {
       nodes = [];
       edges = [];
       sim = {};
+      _sliceIndex = 0;
+      _degreesDirty = true;
+      _degreesCache = new Map();
+      _edgeSet = new Set();
       sleeping = false;
       temperature = PHYSICS.INITIAL_TEMP;
       postMessage({ type: 'cleared' });
