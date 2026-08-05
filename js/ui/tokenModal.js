@@ -22,6 +22,8 @@ export class TokenModal {
     this._input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._saveToken();
     });
+    const btnClose = document.getElementById('token-close');
+    if (btnClose) btnClose.addEventListener('click', () => this.hide());
   }
 
   _saveToken() {

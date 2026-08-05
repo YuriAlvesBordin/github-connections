@@ -27,7 +27,6 @@ export class ContextMenu {
     this.itemOpen.style.display   = 'flex';
     this.itemDelete.style.display = 'flex';
 
-    // Determine expand label and whether it's actionable
     let expandLabel = 'expand connections';
     let expandDisabled = !isUser;
     if (isUser) {
