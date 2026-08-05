@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { graph } from './graph.js';
 import { Storage } from './storage.js';
 import { GitHub } from './api.js';
-import { SimulationClient } from './simulation/SimulationClient.js';
+import { SimulationClient } from './simulation/simulationClient.js';
 import { Camera } from './render/camera.js';
 import { Renderer } from './render/renderer.js';
 import { avatarCache } from './render/avatarCache.js';
@@ -12,6 +12,7 @@ import { ContextMenu } from './ui/contextMenu.js';
 import { FilterPanel } from './ui/filterPanel.js';
 import { toast } from './ui/toast.js';
 import './ui/rateLimitBar.js';
+import { Onboarding } from './ui/onboarding.js';
 import { InputController } from './interaction/input.js';
 
 const BOOT_USER = 'yurialvesbordin';
@@ -179,7 +180,6 @@ async function loadUser(login) {
   }
 }
 
-/** Returns true when all known connections have already been loaded. */
 function isFullyExpanded(node) {
   if (!node.expandedCount) return false;
   const total = (node.followers_count || 0) + (node.following_count || 0);
@@ -318,9 +318,6 @@ async function boot() {
     sim.init(renderer.W, renderer.H, Array.from(graph.nodes.values()), allEdges);
     refreshFilter();
     toast.show(`restored ${graph.nodes.size} nodes`);
-    // Wait for the worker to emit its first positions message, then wait two
-    // rAF cycles so the renderer's _updatePositions() has run and renderPos
-    // is fully populated before fitToView reads bbox().
     const unsub = sim.on((evt) => {
       if (evt.type === 'tick') {
         unsub();
@@ -340,4 +337,6 @@ async function boot() {
 }
 
 boot();
-window.__ghc = { graph, sim, renderer, camera, infoModal };
+const onboarding = new Onboarding();
+onboarding.maybeShow();
+window.__ghc = { graph, sim, renderer, camera, infoModal, onboarding };
