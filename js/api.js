@@ -12,7 +12,6 @@ async function ghGet(path) {
   return text ? JSON.parse(text) : null;
 }
 
-/** Yields each page as it arrives — callers render immediately without waiting for all pages. */
 async function* ghGetPages(path) {
   let page = 1;
   while (true) {
@@ -29,7 +28,6 @@ export const GitHub = {
     return ghGet(`/users/${encodeURIComponent(login)}`);
   },
 
-  /** Streams followers then following page-by-page. onBatch(items, type) called per page. */
   async fetchConnections(login, onBatch) {
     for await (const batch of ghGetPages(`/users/${encodeURIComponent(login)}/followers`))
       await onBatch(batch, 'follower');
