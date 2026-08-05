@@ -1,11 +1,10 @@
-// graph.js - node/edge store
 export class Graph {
   constructor() {
-    this.nodes     = new Map();  // id -> node
-    this.loginMap  = new Map();  // login -> id
-    this.edges     = new Map();  // id -> Set<id>  (undirected adjacency)
-    this.directed  = new Map();  // followerId -> Set<followingId>
-    this.repoEdges = new Map();  // userId -> Set<repoId>
+    this.nodes     = new Map();
+    this.loginMap  = new Map();
+    this.edges     = new Map();
+    this.directed  = new Map();
+    this.repoEdges = new Map();
     this._nextId   = 1;
   }
 
@@ -19,7 +18,6 @@ export class Graph {
     const login = data.login.toLowerCase();
     const existing = this.loginMap.get(login);
     if (existing !== undefined) {
-      // Merge richer API data onto existing node (e.g. followers_count)
       const node = this.nodes.get(existing);
       if (data.followers_count != null) node.followers_count = data.followers_count;
       if (data.following_count != null) node.following_count = data.following_count;
@@ -90,12 +88,10 @@ export class Graph {
     return true;
   }
 
-  /** Mark a node as expanded and record how many connections were loaded. */
   markExpanded(id, count = 0) {
     const node = this.nodes.get(id);
     if (!node) return;
     node.expandedCount = (node.expandedCount || 0) + count;
-    // Keep legacy `expanded` flag for any code that still reads it.
     node.expanded = true;
   }
 
@@ -197,7 +193,6 @@ export class Graph {
     this.clear();
     if (data.nextId) this._nextId = data.nextId;
     for (const node of data.nodes || []) {
-      // Migrate old `expanded: true` to expandedCount if missing
       if (node.expanded && !node.expandedCount) node.expandedCount = 1;
       this.nodes.set(node.id, node);
       if (node.type === 'user') this.loginMap.set(node.login.toLowerCase(), node.id);
