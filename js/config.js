@@ -4,7 +4,7 @@ export const CONFIG = {
   DEFAULT_RATE_LIMIT: 60,
 
   PHYSICS: {
-    NODE_REPULSION:   18000,
+    NODE_REPULSION:   8000,
     EDGE_SPRING_K:    0.022,
     EDGE_REST:        170,
     CENTER_GRAVITY:   0.0035,
