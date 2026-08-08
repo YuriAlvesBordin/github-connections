@@ -1,11 +1,12 @@
 import { TokenModal } from './tokenModal.js';
 
 export class Topbar {
-  constructor({ onLoad, onClear, onFit, onReheat }) {
+  constructor({ onLoad, onClear, onFit, onReheat, onFilter }) {
     this.onLoad   = onLoad;
     this.onClear  = onClear;
     this.onFit    = onFit;
     this.onReheat = onReheat;
+    this.onFilter = onFilter;
 
     this.input     = document.getElementById('username-input');
     this.btnLoad   = document.getElementById('btn-load');
@@ -22,6 +23,9 @@ export class Topbar {
     this.btnLoad.addEventListener('click', () => this._load());
     this.input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._load();
+    });
+    this.input.addEventListener('input', () => {
+      if (this.onFilter) this.onFilter(this.input.value.trim().toLowerCase());
     });
     this.btnClear.addEventListener('click',  () => this.onClear());
     this.btnFit.addEventListener('click',    () => this.onFit());

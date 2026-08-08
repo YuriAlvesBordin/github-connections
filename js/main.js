@@ -36,6 +36,7 @@ const topbar = new Topbar({
   onClear: clearGraph,
   onFit: fitToView,
   onReheat: () => regenerateLayout(),
+  onFilter: applyPersonFilter,
 });
 
 const input = new InputController({
@@ -106,6 +107,53 @@ let booted = false;
 
 function applyFilters(state) {
   renderer.setFilter(state.mode);
+}
+
+function applyPersonFilter(query) {
+  if (!query) {
+    renderer.setPersonFilter(null);
+    return;
+  }
+  const targetId = graph.idOf(query);
+  if (targetId === undefined) {
+    renderer.setPersonFilter(null);
+    return;
+  }
+  const connectedIds = getConnectedNodeIds(targetId);
+  renderer.setPersonFilter(connectedIds);
+}
+
+function getConnectedNodeIds(targetId) {
+  const connected = new Set();
+  connected.add(targetId);
+
+  // Add direct neighbors (followers, following)
+  const edges = graph.edges.get(targetId);
+  if (edges) {
+    for (const neighborId of edges) {
+      connected.add(neighborId);
+    }
+  }
+
+  // Add repos for the target user
+  const repos = graph.repoEdges.get(targetId);
+  if (repos) {
+    for (const repoId of repos) {
+      connected.add(repoId);
+    }
+  }
+
+  // Add repos for connected users
+  for (const neighborId of connected) {
+    const neighborRepos = graph.repoEdges.get(neighborId);
+    if (neighborRepos) {
+      for (const repoId of neighborRepos) {
+        connected.add(repoId);
+      }
+    }
+  }
+
+  return connected;
 }
 
 function refreshFilter() {

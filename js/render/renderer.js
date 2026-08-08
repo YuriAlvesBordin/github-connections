@@ -12,6 +12,13 @@ const PALETTE = {
   labelHi: '#ffffff',
 };
 
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 const POP_DURATION = 400;
 const POP_DURATION_REPO = 250;
 
@@ -48,6 +55,7 @@ export class Renderer {
     this._visibleNodes = new Set();
 
     this.filterMode = 'all';
+    this.personFilter = null; // Set of node IDs that should be highlighted (not dimmed)
     this.showArrows = true;
     this.showLabels = true;
 
@@ -154,6 +162,10 @@ export class Renderer {
       this.sim.setActiveNodes(ids);
     }
   }
+
+  setPersonFilter(connectedIds) {
+    this.personFilter = connectedIds;
+  }
   setShowArrows(v) { this.showArrows = v; }
   setShowLabels(v) { this.showLabels = v; }
   setSelected(node) { this.selected = node; }
@@ -237,6 +249,7 @@ export class Renderer {
   _drawEdges(ctx) {
     const scale = this.camera.scale;
     const now = Date.now();
+    const hasPersonFilter = this.personFilter !== null;
 
     for (const [a, b, type] of this.graph.pairs()) {
       if (!this._visibleNodes.has(a) || !this._visibleNodes.has(b)) continue;
@@ -252,6 +265,12 @@ export class Renderer {
       const isMutual = type === 'mutual';
       const color = isMutual ? PALETTE.mutual : PALETTE.oneway;
 
+      // Check if edge should be dimmed (not related to filtered person)
+      const edgeInFilter = hasPersonFilter
+        ? (this.personFilter.has(a) && this.personFilter.has(b))
+        : true;
+      const alpha = edgeInFilter ? 1 : 0.15;
+
       const rA = this._radius(nodeA) + CONFIG.RENDER.RING_WIDTH;
       const rB = this._radius(nodeB) + CONFIG.RENDER.RING_WIDTH;
       const dx = pb.x - pa.x, dy = pb.y - pa.y;
@@ -262,14 +281,14 @@ export class Renderer {
       const tx = pb.x - ux * rB;
       const ty = pb.y - uy * rB;
 
-      ctx.strokeStyle = color;
+      ctx.strokeStyle = hexToRgba(color, alpha);
       ctx.lineWidth = 1 / scale;
       ctx.beginPath();
       ctx.moveTo(sx, sy);
       ctx.lineTo(tx, ty);
       ctx.stroke();
 
-      if (this.showArrows && !isMutual) {
+      if (this.showArrows && !isMutual && edgeInFilter) {
         let tipX, tipY;
         if (type === 'oneway') {
           tipX = tx; tipY = ty;
@@ -284,7 +303,7 @@ export class Renderer {
         const px = -dirY, py = dirX;
         const w = 4 / scale;
 
-        ctx.fillStyle = color;
+        ctx.fillStyle = hexToRgba(color, alpha);
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);
         ctx.lineTo(baseX + px * w, baseY + py * w);
@@ -300,6 +319,7 @@ export class Renderer {
     const hoveredId = this.hovered?.id;
     const selectedId = this.selected?.id;
     const now = Date.now();
+    const hasPersonFilter = this.personFilter !== null;
 
     for (const [userId, repoIds] of this.graph.repoEdges) {
       if (!this._visibleNodes.has(userId)) continue;
@@ -318,7 +338,23 @@ export class Renderer {
         const involves = (hoveredId === userId || hoveredId === rid);
         const dim = hoveredId && !involves;
         const boosted = involves || (selectedId === userId || selectedId === rid);
-        const alpha = dim ? 0.12 : (boosted ? 0.85 : 0.45);
+        
+        // Person filter dimming
+        const inPersonFilter = hasPersonFilter
+          ? (this.personFilter.has(userId) && this.personFilter.has(rid))
+          : true;
+        const personDim = hasPersonFilter && !inPersonFilter;
+        
+        let alpha;
+        if (personDim) {
+          alpha = 0.1;
+        } else if (dim) {
+          alpha = 0.12;
+        } else if (boosted) {
+          alpha = 0.85;
+        } else {
+          alpha = 0.45;
+        }
 
         ctx.strokeStyle = `rgba(191,90,242,${alpha})`;
         ctx.lineWidth = (boosted ? 1.4 : 1) / scale;
@@ -335,6 +371,7 @@ export class Renderer {
   _drawNodes(ctx) {
     const scale = this.camera.scale;
     const now = Date.now();
+    const hasPersonFilter = this.personFilter !== null;
 
     for (const node of this.graph.nodes.values()) {
       if (!this._visibleNodes.has(node.id)) continue;
@@ -349,7 +386,12 @@ export class Renderer {
       if (popS <= 0) continue;
 
       const r = this._radius(node) * popS;
-      const alpha = popT;
+      let alpha = popT;
+
+      // Apply person filter dimming
+      if (hasPersonFilter && !this.personFilter.has(node.id)) {
+        alpha *= 0.15; // Dim to 15% opacity
+      }
 
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -482,6 +524,7 @@ export class Renderer {
     const scale = this.camera.scale;
     const drawAll = scale > 0.4;
     if (!drawAll && !this.hovered && !this.selected) return;
+    const hasPersonFilter = this.personFilter !== null;
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -497,6 +540,11 @@ export class Renderer {
       const dur = node.type === 'repo' ? POP_DURATION_REPO : POP_DURATION;
       const age = Date.now() - (node.addedAt ?? Date.now());
       if (age < 0 || age < dur * 0.5) continue;
+
+      // Skip labels for dimmed nodes in person filter
+      if (hasPersonFilter && !this.personFilter.has(node.id) && !isSel && !isHov) {
+        continue;
+      }
 
       const r = this._radius(node);
       const label = node.type === 'repo' ? node.name : node.login;
