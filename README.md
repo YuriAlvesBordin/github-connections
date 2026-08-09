@@ -18,9 +18,9 @@ The graph uses a force-directed layout where nodes repel each other and edges ac
 
 ### Connection Types
 Three relationship types are represented visually:
-- Mutual connections (green) — both users follow each other
-- One-way connections (orange) — only one user follows the other
-- Repository links (purple) — a user's top repositories connected to their node
+- Mutual connections (green): both users follow each other
+- One-way connections (orange): only one user follows the other
+- Repository links (purple): a user's top repositories connected to their node
 
 ### Filtering
 Two filtering modes are available:
@@ -137,8 +137,8 @@ Modern browsers with ES modules, Web Workers, and Canvas 2D support:
 
 ## License
 
-MIT License — see LICENSE file for details.
+MIT License: see LICENSE file for details.
 
 ---
 
-GitHub Connections — a portfolio project demonstrating vanilla JavaScript architecture, Web Workers, Canvas rendering, and force-directed graph layouts.
+GitHub Connections: a portfolio project demonstrating vanilla JavaScript architecture, Web Workers, Canvas rendering, and force-directed graph layouts.
