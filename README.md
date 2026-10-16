@@ -47,9 +47,10 @@ Graph state is saved to localStorage automatically and restored on page load. A 
 
 ## Getting Started
 
-No build step required. Serve the directory with any static file server:
+No build step required — just install the one dependency and serve the directory:
 
 ```bash
+npm install
 python3 -m http.server 8080
 # or
 npx serve .
@@ -60,7 +61,7 @@ Then open http://localhost:8080 in a modern browser.
 ## Architecture
 
 ```
-├── index.html           # Application entry point
+├── index.html           # Application entry point (includes the import map)
 ├── css/
 │   ├── main.css         # Core styles and layout
 │   └── ui.css           # Component-specific styles
@@ -70,8 +71,6 @@ Then open http://localhost:8080 in a modern browser.
 │   ├── graph.js         # Graph data structure and operations
 │   ├── api.js           # GitHub REST API client
 │   ├── storage.js       # localStorage persistence
-│   ├── vendor/
-│   │   └── graphium/    # Graphium library (bundled dist)
 │   └── ui/
 │       ├── topbar.js        # Search input and toolbar buttons
 │       ├── filterPanel.js   # Connection type filter control
@@ -81,13 +80,21 @@ Then open http://localhost:8080 in a modern browser.
 │       ├── toast.js         # Toast notifications
 │       ├── rateLimitBar.js  # API rate limit indicator
 │       └── onboarding.js    # First-time user guided tour
+├── serve.py             # Dev server with cache disabled (recommended)
 └── assets/
     ├── Showcase.gif         # Demonstration animation
     └── images/              # Favicons and static assets
 ```
 
+### Built with Graphium
+The entire graph layer — physics, rendering and interaction — is powered by
+[`@yurialvesbordin/graphium`](https://www.npmjs.com/package/@yurialvesbordin/graphium),
+a high-performance WebGL2 graph visualization library. The app imports it as a
+plain ES module resolved through an [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap)
+declared in `index.html`, so no bundler or build step is needed.
+
 ### Physics Engine
-Physics is powered by [Graphium](https://github.com/YuriAlvesBordin/Graphium), a WebGL2 graph visualization library. Its physics engine uses a spatial hash for O(n) neighbor queries, spring forces for edges with per-link rest lengths, collision prevention, and a sleep state that pauses the render loop entirely when kinetic energy drops below a threshold.
+Graphium's physics engine uses a spatial hash for O(n) neighbor queries, spring forces for edges with per-link rest lengths, collision prevention, and a sleep state that pauses the render loop entirely when kinetic energy drops below a threshold.
 
 ### Rendering
 Graphium renders nodes and curved edges on the GPU through WebGL2, targeting 60 frames per second. Node avatars are uploaded to a GPU texture atlas. The camera supports smooth panning and zooming with wheel, pinch and drag gestures, and pointer interactions (drag, hover, click, double-click, long-press, context menu) are handled by Graphium's built-in pointer controller and event system.
@@ -124,11 +131,11 @@ The toolbar displays the remaining quota with a color-coded indicator.
 
 ## Browser Support
 
-Modern browsers with ES modules, Web Workers, and Canvas 2D support:
-- Chrome 100+
-- Firefox 95+
-- Safari 15+
-- Edge 100+
+Modern browsers with ES modules, import maps and WebGL2 support:
+- Chrome 89+
+- Firefox 108+
+- Safari 16.4+
+- Edge 89+
 
 ## License
 

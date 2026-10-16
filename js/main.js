@@ -2,7 +2,7 @@ import { CONFIG } from './config.js';
 import { graph } from './graph.js';
 import { Storage } from './storage.js';
 import { GitHub } from './api.js';
-import { Graphium } from '../vendor/graphium/index.js';
+import { Graphium } from '@yurialvesbordin/graphium';
 import { Topbar } from './ui/topbar.js';
 import { InfoModal } from './ui/infoPanel.js';
 import { ContextMenu } from './ui/contextMenu.js';

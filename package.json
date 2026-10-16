@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/YuriAlvesBordin/github-connections#readme",
   "dependencies": {
-    "graphium": "file:.."
+    "@yurialvesbordin/graphium": "^2.0.0"
   }
 }
