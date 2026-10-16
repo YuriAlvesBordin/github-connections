@@ -238,7 +238,18 @@ function fitToView() {
 }
 
 function regenerateLayout() {
-  if (graphium.nodeCount === 0) { toast.show('nothing to regenerate'); return; }
+  const count = graphium.nodeCount;
+  if (count === 0) { toast.show('nothing to regenerate'); return; }
+  // physics.reset() preserva posições; re-espalha os nós antes de reiniciar
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const spread = Math.min(900, 140 + count * 16);
+  let i = 0;
+  for (const id of graphium.nodeIds()) {
+    const r = Math.sqrt((i + 0.5) / count) * spread;
+    const a = golden * i + Math.random() * 0.5;
+    graphium.node(id)?.move(Math.cos(a) * r, Math.sin(a) * r);
+    i++;
+  }
   graphium.reboot();
   toast.show('regenerating layout');
 }
