@@ -47,16 +47,15 @@ Graph state is saved to localStorage automatically and restored on page load. A 
 
 ## Getting Started
 
-No build step required — just install the one dependency and serve the directory:
+No build step required — just serve the directory:
 
 ```bash
-npm install
 python3 -m http.server 8080
 # or
 npx serve .
 ```
 
-Then open http://localhost:8080 in a modern browser.
+Then open http://localhost:8080 in a modern browser. Graphium is loaded at runtime from the jsDelivr CDN, so no install step is needed.
 
 ## Architecture
 
@@ -91,7 +90,8 @@ The entire graph layer — physics, rendering and interaction — is powered by
 [`@yurialvesbordin/graphium`](https://www.npmjs.com/package/@yurialvesbordin/graphium),
 a high-performance WebGL2 graph visualization library. The app imports it as a
 plain ES module resolved through an [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap)
-declared in `index.html`, so no bundler or build step is needed.
+declared in `index.html`, which loads the published package from the jsDelivr CDN,
+so no bundler or build step is needed.
 
 ### Physics Engine
 Graphium's physics engine uses a spatial hash for O(n) neighbor queries, spring forces for edges with per-link rest lengths, collision prevention, and a sleep state that pauses the render loop entirely when kinetic energy drops below a threshold.
