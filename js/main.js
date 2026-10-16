@@ -237,20 +237,88 @@ function fitToView() {
   graphium.fit(60);
 }
 
+let regenToken = 0;
+
 function regenerateLayout() {
   const count = graphium.nodeCount;
   if (count === 0) { toast.show('nothing to regenerate'); return; }
-  // physics.reset() preserva posições; re-espalha os nós antes de reiniciar
+  const token = ++regenToken;
+
+  const ids = graphium.nodeIds();
+  const order = [...ids].sort(() => Math.random() - 0.5);
+  const targetRadius = new Map();
+  for (const id of ids) {
+    targetRadius.set(id, graphium.getNode(id)?.radius ?? 14);
+  }
+
+  // physics.reset() preserva posições; teleporta todos para as novas
+  // posições (espiral de ângulo áureo) antes de reiniciar a simulação.
+  // Hubs primeiro: vizinhos nascem perto, então as molas partem perto
+  // do repouso e nada é puxado com força durante a cascata.
+  const degreeOf = new Map();
+  for (const id of ids) {
+    degreeOf.set(id, graphium.getNode(id)?.degree ?? 0);
+  }
+  const placed = [...ids].sort((a, b) => degreeOf.get(b) - degreeOf.get(a));
   const golden = Math.PI * (3 - Math.sqrt(5));
   const spread = Math.min(900, 140 + count * 16);
-  let i = 0;
-  for (const id of graphium.nodeIds()) {
+  placed.forEach((id, i) => {
     const r = Math.sqrt((i + 0.5) / count) * spread;
     const a = golden * i + Math.random() * 0.5;
     graphium.node(id)?.move(Math.cos(a) * r, Math.sin(a) * r);
-    i++;
-  }
+  });
   graphium.reboot();
+  const baseTemp = graphium.physics.options.temperature;
+  graphium.setPhysics({ temperature: 0.45 });
+
+  // cascata de aparecimento: um nó por vez, com pop-in de escala
+  for (const id of ids) graphium.node(id)?.style({ hidden: true });
+  for (const lid of graphium.linkIds()) graphium.linkById(lid)?.style({ hidden: true });
+
+  const visibleIds = new Set();
+  const STEP_MS = Math.max(10, Math.round(1400 / count));
+  const POP_MS = 300;
+  const C1 = 1.70158, C3 = C1 + 1; // ease-out-back (leve overshoot)
+
+  const revealLinks = () => {
+    for (const lid of graphium.linkIds()) {
+      const ls = graphium.getLink(lid);
+      if (!ls || !ls.hidden) continue;
+      if (visibleIds.has(ls.source) && visibleIds.has(ls.target)) {
+        graphium.linkById(lid)?.style({ hidden: false });
+      }
+    }
+  };
+
+  order.forEach((id, i) => {
+    setTimeout(() => {
+      if (token !== regenToken) return;
+      const h = graphium.node(id);
+      if (h && (!personFilterIds || personFilterIds.has(id))) {
+        visibleIds.add(id);
+        h.style({ hidden: false, radius: 0.5 });
+        const target = targetRadius.get(id) ?? 14;
+        const t0 = performance.now();
+        const pop = () => {
+          if (token !== regenToken) return;
+          const t = Math.min(1, (performance.now() - t0) / POP_MS);
+          const s = Math.max(0, 1 + C3 * Math.pow(t - 1, 3) + C1 * Math.pow(t - 1, 2));
+          h.style({ radius: Math.max(0.5, target * s) });
+          if (t < 1) requestAnimationFrame(pop);
+          else h.style({ radius: target });
+        };
+        requestAnimationFrame(pop);
+        revealLinks();
+      }
+      if (i === order.length - 1) {
+        setTimeout(() => {
+          if (token === regenToken) graphium.setPhysics({ temperature: baseTemp });
+        }, POP_MS + 100);
+        refreshFilter();
+      }
+    }, i * STEP_MS);
+  });
+
   toast.show('regenerating layout');
 }
 
