@@ -1,0 +1,22 @@
+{
+  "name": "github-connections",
+  "version": "1.0.0",
+  "description": "Interactive force-directed graph visualization of GitHub user connections. Explore followers, following, and repository relationships in real time.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuriAlvesBordin/github-connections.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/YuriAlvesBordin/github-connections/issues"
+  },
+  "homepage": "https://github.com/YuriAlvesBordin/github-connections#readme",
+  "dependencies": {
+    "graphium": "file:.."
+  }
+}

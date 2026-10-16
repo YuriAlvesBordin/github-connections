@@ -24,8 +24,14 @@ async function* ghGetPages(path) {
 }
 
 export const GitHub = {
-  fetchUser(login) {
-    return ghGet(`/users/${encodeURIComponent(login)}`);
+  async fetchUser(login) {
+    const user = await ghGet(`/users/${encodeURIComponent(login)}`);
+    if (user) {
+      // A API REST retorna `followers`/`following`; o app usa `*_count`.
+      if (user.followers_count == null) user.followers_count = user.followers ?? 0;
+      if (user.following_count == null) user.following_count = user.following ?? 0;
+    }
+    return user;
   },
 
   async fetchConnections(login, onBatch) {

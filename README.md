@@ -65,18 +65,13 @@ Then open http://localhost:8080 in a modern browser.
 │   ├── main.css         # Core styles and layout
 │   └── ui.css           # Component-specific styles
 ├── js/
-│   ├── main.js          # Application orchestration
-│   ├── config.js        # Physics and rendering constants
+│   ├── main.js          # Application orchestration and Graphium integration
+│   ├── config.js        # Constants
 │   ├── graph.js         # Graph data structure and operations
 │   ├── api.js           # GitHub REST API client
 │   ├── storage.js       # localStorage persistence
-│   ├── simulation/
-│   │   └── simulationClient.js  # Web Worker communication
-│   ├── physics.worker.js        # Force-directed physics simulation
-│   ├── render/
-│   │   ├── renderer.js          # Canvas 2D rendering loop
-│   │   ├── camera.js            # Pan and zoom camera controller
-│   │   └── avatarCache.js       # Avatar image caching
+│   ├── vendor/
+│   │   └── graphium/    # Graphium library (bundled dist)
 │   └── ui/
 │       ├── topbar.js        # Search input and toolbar buttons
 │       ├── filterPanel.js   # Connection type filter control
@@ -92,10 +87,10 @@ Then open http://localhost:8080 in a modern browser.
 ```
 
 ### Physics Engine
-The physics simulation runs in a dedicated Web Worker to avoid blocking the main thread. It uses a Barnes-Hut quadtree for O(n log n) repulsive force calculation, spring forces for edges with degree-based rest lengths, collision prevention, and edge crossing reduction. Level-of-detail slicing activates automatically for graphs exceeding 800 nodes. The simulation enters a sleep state when kinetic energy drops below a threshold.
+Physics is powered by [Graphium](https://github.com/YuriAlvesBordin/Graphium), a WebGL2 graph visualization library. Its physics engine uses a spatial hash for O(n) neighbor queries, spring forces for edges with per-link rest lengths, collision prevention, and a sleep state that pauses the render loop entirely when kinetic energy drops below a threshold.
 
 ### Rendering
-The renderer uses Canvas 2D targeting 60 frames per second. It is device pixel ratio aware (capped at 2x for performance). New nodes animate in with a pop-in effect. Loading spinners indicate active fetches. Camera movement uses linear interpolation for smooth panning and zooming.
+Graphium renders nodes and curved edges on the GPU through WebGL2, targeting 60 frames per second. Node avatars are uploaded to a GPU texture atlas. The camera supports smooth panning and zooming with wheel, pinch and drag gestures, and pointer interactions (drag, hover, click, double-click, long-press, context menu) are handled by Graphium's built-in pointer controller and event system.
 
 ## GitHub Token Configuration
 
