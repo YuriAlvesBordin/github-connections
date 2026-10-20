@@ -113,7 +113,7 @@
   </div>
 
   <div id="token-overlay" class="modal-overlay">
-    <div class="info-modal token-modal" role="dialog" aria-labelledby="token-modal-title">
+    <div id="info-modal" class="info-modal token-modal" role="dialog" aria-labelledby="token-modal-title">
       <button id="token-close" class="modal-close" type="button" aria-label="close">&times;</button>
       <h3 id="token-modal-title" class="info-title token-title">GitHub Token</h3>
       <p class="info-desc token-intro">
@@ -135,7 +135,7 @@
       <input id="token-input" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false" class="token-input-field" />
       <div class="token-actions">
         <button id="token-save" class="btn btn-primary btn-block token-btn" type="button">save token</button>
-        <button id="token-clear" class="btn btn-block token-btn token-btn-clear" type="button">clear</button>
+        <button id="token-clear" class="btn btn-block token-btn token-btn-clear" type="button">clear token</button>
       </div>
       <div id="token-status" class="token-status"></div>
     </div>
@@ -176,7 +176,7 @@
   <script type="importmap">
     {
       "imports": {
-        "@yurialvesbordin/graphium": "https://cdn.jsdelivr.net/npm/@yurialvesbordin/graphium@2.0.0/dist/index.js"
+        "@yurialvesbordin/graphium": "https://cdn.jsdelivr.net/npm/@yurialvesbordin/graphium@2.0.1/dist/index.js"
       }
     }
   </script>
